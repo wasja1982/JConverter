@@ -6,15 +6,32 @@ import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) {
+        System.out.println( "JConvertor v0.1" );
         // Associate ucoz file => Fapos .table
-        String[] uTables = new String[] {"forum", "forump", "fr_fr", "nw_nw", "pu_pu", "news", "publ", "users"};
-        ArrayList FpsData = new Converter("H:\\WebServers\\home\\localhost\\www\\PhpProject2\\_bk_2d8acada89").getSQL(uTables);
-        try {
-            OutputStreamWriter buf = new OutputStreamWriter ( new FileOutputStream ( "fapos.sql" ), "UTF-8" );
-            for (int i = 0; i < FpsData.size(); i++) buf.write((String)FpsData.get(i) + "\r\n");
-            buf.flush();
-            buf.close();
+        String[] uTables = new String[] {"users", "fr_fr", "forum", "forump", "nw_nw", "news", "pu_pu", "publ"};
+        Converter conv = null;
+//            conv = new Converter("H:\\WebServers\\home\\localhost\\www\\PhpProject2\\_bk_2d8acada89");
+        if (args.length == 0) {
+            conv = new Converter(".");
+        } else if (args.length == 1) {
+            conv = new Converter(args[0]);
+        } else if (args.length == 2) {
+            conv = new Converter(args[0], args[1]);
+        } else if (args.length == 3) {
+            conv = new Converter(args[0], args[1], args[2]);
         }
-        catch (Exception e) {}
+        ArrayList FpsData = conv.getSQL(uTables);
+        if (FpsData != null) {
+            System.out.println( "Save \"fapos.sql\"..." );
+            try {
+                OutputStreamWriter buf = new OutputStreamWriter ( new FileOutputStream ( "fapos.sql" ), "UTF-8" );
+                for (int i = 0; i < FpsData.size(); i++) buf.write((String)FpsData.get(i) + "\r\n");
+                buf.flush();
+                buf.close();
+            }
+            catch (Exception e) {
+                System.out.println( "File \"fapos.sql\" not saved (" + e.getMessage() + ")." );
+            }
+        }
     }
 }
