@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.1" );
+        System.out.println( "JConvertor v0.2" );
         // Associate ucoz file => Fapos .table
         String[] uTables = new String[] {"users", "fr_fr", "forum", "forump", "nw_nw", "news", "pu_pu", "publ"};
         Converter conv = null;
@@ -15,10 +15,8 @@ public class Main {
             conv = new Converter(".");
         } else if (args.length == 1) {
             conv = new Converter(args[0]);
-        } else if (args.length == 2) {
+        } else if (args.length > 1) {
             conv = new Converter(args[0], args[1]);
-        } else if (args.length == 3) {
-            conv = new Converter(args[0], args[1], args[2]);
         }
         ArrayList FpsData = conv.getSQL(uTables);
         if (FpsData != null) {
