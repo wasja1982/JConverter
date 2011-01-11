@@ -12,9 +12,10 @@ import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
 
 public class ParserHTML extends DefaultHandler {
-    String text = "";
-    Stack span = new Stack();
-    Stack div = new Stack();
+    public String text = "";
+    public boolean parseSmile = false;
+    private Stack span = new Stack();
+    private Stack div = new Stack();
     //Начало документа
     @Override
     public void startDocument() throws SAXException{
@@ -31,6 +32,36 @@ public class ParserHTML extends DefaultHandler {
     //Начало элемента
     @Override
     public void startElement(String namespaceURI, String localName, String qName, Attributes attr) throws SAXException{
+        String[][] smile = {{"wink", ";)"},
+                            {"wacko", "%)"},
+                            {"tongue", ":p"},
+                            {"surprised", ":o"},
+                            {"smile", ":)"},
+                            {"sad", ":("},
+                            {"happy", "^_^"},
+                            {"dry", "<_<"},
+                            {"cry", ":'("},
+                            {"cool", "B)"},
+                            {"biggrin", ":D"},
+                            {"angry", ">("},
+                            {"zonked", ":zonked:"},
+                            {"unsure", ":unsure:"},
+                            {"tired", ":tired:"},
+                            {"thebox", ":thebox:"},
+                            {"rollseyes", ":rollseyes:"},
+                            {"quizzical", ":quizzical:"},
+                            {"nervous", ":nervous:"},
+                            {"lol", ":lol:"},
+                            {"heart", ":heart:"},
+                            {"grin", ":grin:"},
+                            {"glad", ":glad:"},
+                            {"furious", ":furious:"},
+                            {"frown", ":frown:"},
+                            {"cyclops", ":cyclops:"},
+                            {"confused", ":confused:"},
+                            {"aghast", ":aghast:"},
+                            {"aggrieved", ":aggrieved:"}};
+
         if (qName.equalsIgnoreCase("br") || qName.equalsIgnoreCase("p")) text += "\r\n";
         else if (qName.equalsIgnoreCase("b")) text += "[b]";
         else if (qName.equalsIgnoreCase("i")) text += "[i]";
@@ -39,7 +70,21 @@ public class ParserHTML extends DefaultHandler {
         else if (qName.equalsIgnoreCase("ul")) text += "[list]";
         else if (qName.equalsIgnoreCase("ol")) text += "[list=1]";
         else if (qName.equalsIgnoreCase("img")) {
-            text += "[img]" + attr.getValue("src") + "[/img]";
+            boolean change = false;
+            if (parseSmile) {
+                for (int i = 0; i < smile.length; i++) {
+                    if (attr.getValue("alt").equals(smile[i][0])) {
+                        text += " " + smile[i][1] + " ";
+                        change = true;
+                        break;
+                    }
+                }
+                if (!change) {
+                    text += "[img]" + attr.getValue("src") + "[/img]";
+                }
+            } else {
+                text += "[img]" + attr.getValue("src") + "[/img]";
+            }
         } else if (qName.equalsIgnoreCase("span")) {
             String style = attr.getValue("style");
             if (style != null) {
