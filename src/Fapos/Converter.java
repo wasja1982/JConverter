@@ -326,6 +326,9 @@ public class Converter {
      * forum.txt
      */
     private String parse_forum(String[] uRecord) {
+        if (uRecord.length < 13) {
+            return null;
+        }
         String id_author = "0";
         try {
             Object ob = uUsers.get(uRecord[10]);
@@ -351,6 +354,9 @@ public class Converter {
      * forump.txt
      */
     private String parse_forump(String[] uRecord) {
+        if (uRecord.length < 11) {
+            return null;
+        }
         String id_author = "0";
         try {
             Object ob = uUsers.get(uRecord[6]);
@@ -411,6 +417,9 @@ public class Converter {
      * fr_fr.txt
      */
     private String parse_fr_fr(String[] uRecord) {
+        if (uRecord.length < 6) {
+            return null;
+        }
         String output;
         if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
             output = String.format("INSERT INTO `" + PREF + "forum_cat`"
@@ -418,6 +427,9 @@ public class Converter {
                 + " ('%s', '%s');",
                 uRecord[0], addslashes(uRecord[5]));
         } else {
+            if (uRecord.length < 17) {
+                return null;
+            }
             String last_theme_id = "";
             try {
                 last_theme_id = ((uRecord[16] != null) && !uRecord[16].isEmpty()) ? uRecord[16] : "";
@@ -448,6 +460,9 @@ public class Converter {
      * ld_ld.txt
      */
     private String parse_ld_ld(String[] uRecord) {
+        if (uRecord.length < 7) {
+            return null;
+        }
         String section_id = "0";
         try {
             section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
@@ -477,6 +492,9 @@ public class Converter {
      * nw_nw.txt & bl_bl.txt & fq_fq.txt
      */
     private String parse_nw_nw(String[] uRecord, int mode) {
+        if (uRecord.length < 5) {
+            return null;
+        }
         int id = 3 + mode;
         try {
             id = (Integer.parseInt( uRecord[0] ) + 1) * 3 + mode;
@@ -495,6 +513,9 @@ public class Converter {
      * pu_pu.txt
      */
     private String parse_pu_pu(String[] uRecord) {
+        if (uRecord.length < 6) {
+            return null;
+        }
         String section_id = "0";
         try {
             section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
@@ -515,7 +536,7 @@ public class Converter {
 
         String output = String.format("INSERT INTO `" + PREF + "stat_sections`"
             + " (`id`, `section_id`, `title`, `class`, `view_on_home`) VALUES"
-            + " ('%s', '%s', '%s', '%s', '%s', '%s');",
+            + " ('%s', '%s', '%s', '%s', '%s');",
             uRecord[0], section_id, addslashes(uRecord[5]), class_sections, "1");
         return output;
     }
@@ -524,6 +545,9 @@ public class Converter {
      * loads.txt
      */
     private String parse_loads(String[] uRecord) {
+        if (uRecord.length < 33) {
+            return null;
+        }
         String download = "";
         if (uRecord[24] != null && !uRecord[24].isEmpty()) {
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
@@ -575,6 +599,9 @@ public class Converter {
      * news.txt & blog.txt
      */
     private String parse_news(String[] uRecord, int mode) {
+        if (uRecord.length < 17) {
+            return null;
+        }
         int id = 0;
         try {
             id = (Integer.parseInt( uRecord[0] ) - 1) * 3 + mode;
@@ -623,6 +650,9 @@ public class Converter {
      * faq.txt
      */
     private String parse_faq(String[] uRecord) {
+        if (uRecord.length < 16) {
+            return null;
+        }
         int id = 0;
         try {
             id = (Integer.parseInt( uRecord[0] ) - 1) * 3 + 3;
@@ -662,6 +692,9 @@ public class Converter {
      * publ.txt
      */
     private String parse_publ(String[] uRecord) {
+        if (uRecord.length < 23) {
+            return null;
+        }
         String commented = "1";
         if (uRecord[7].equals("0")) {
             commented = "0";
@@ -704,6 +737,9 @@ public class Converter {
      * comments.txt
      */
     private String parse_comments(String[] uRecord) {
+        if (uRecord.length < 11) {
+            return null;
+        }
         String[] tableName = {null, "news_comments", "news_comments", "stat_comments", null, "loads_comments", null, null};
         String[] columnName = {null, "new_id", "new_id", "entity_id", null, "entity_id", null, null};
         int moduleID = 0;
@@ -740,6 +776,9 @@ public class Converter {
      * users.txt
      */
     private String parse_users(String[] uRecord) {
+        if (uRecord.length < 24) {
+            return null;
+        }
         if (!uRecord[3].isEmpty() && !uRecord[3].equals( "0" )) {
             String[] path = uRecord[3].split( "/" );
             if (path.length > 1) {

@@ -1,3 +1,15 @@
+// Pro-версия:
+// 1) Перенос фотоальбома.
+// 2) Полный перенос файлов модулей статей, новостей, блогов и FAQ по аналогии с вложениями форума.
+// 3) Парсинг ссылок внутри сайта и модификация их для перенаправления на новые адреса.
+// 4) Модификация страниц (изменение условных кодов).
+// 5) Перенос шаблонов (изменение условных кодов).
+// 6) Модификация ссылок файлового архива, указывающих на файлы, расположенные на сайте.
+// 7) Добавление файлов в архив с архивацией всех файлов и добавлением внутрь архива требуемых файлов о сайте.
+// 8) Усечение полей полного содержания файлового архива при необходимости.
+
+
+
 /*
 -path "path"   - путь к папке бекапа
 -pref pref     - префикс БД
@@ -39,7 +51,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3" );
+        System.out.println( "JConvertor v0.3.1" );
         String path = ".";
         String pref = "";
         String password = null;
@@ -99,6 +111,7 @@ public class Main {
         String[] uFiles = new String[] {"users", "forum", "loads", "stat", "news", "comments"};
 
         Converter conv = new Converter(path, pref);
+//        Converter_trash conv = new Converter_trash(path, pref);
 
         conv.PASSWORD = password;
         conv.USE_WEB_AVATARS = useWebAvatars;
