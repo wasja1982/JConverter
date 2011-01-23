@@ -51,7 +51,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.1" );
+        System.out.println( "JConvertor v0.3.2" );
         String path = ".";
         String pref = "";
         String password = null;

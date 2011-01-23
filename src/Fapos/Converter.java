@@ -29,7 +29,11 @@
 // 12) Добавлена конвертация смайлов (не соотвествует стандартному набору Fapos). +
 // 13) Добавлена конвертация комментариев для блогов, новостей, статей и каталога файлов. +
 
-//http://ozka-lemming.blogspot.com/2010/02/md5-java-messagedigest.html
+// Добавлено 0.3.1
+// 1) Добавлен анализ минимального количества требуемых полей). +
+
+// Добавлено 0.3.2
+// 1) Изменен путь к каталогу файлов (load/loads) для Fapos 0.9.93. +
 
 package Fapos;
 
@@ -83,6 +87,7 @@ public class Converter {
     public boolean NO_EMPTY = false;
     public boolean NO_IMAGE = false;
     public boolean PARSE_SMILE = false;
+    private String LOADS_OUT = "loads";
 
     private TreeMap uUsers = null;
     private TreeMap uUsersMeta = null;
@@ -553,7 +558,7 @@ public class Converter {
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
             download = loadsName(uRecord[24], uRecord[5]);
             String path = ((Integer)(Integer.parseInt(uRecord[0]) / 100)).toString();
-            if (!copyFile( LOADS_TABLES + path + DS + filename, "files" + DS + "load" + DS + download )) {
+            if (!copyFile( LOADS_TABLES + path + DS + filename, "files" + DS + LOADS_OUT + DS + download )) {
                 System.out.println( "WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found." );
             }
         }
@@ -964,16 +969,16 @@ public class Converter {
                                     + " ('1', 'text', '', 'Ссылка для скачивания архива с другого сервера', '255', 'a:0:{}');" );
                         // Инициализация папки для работы с файлами
                         try {
-                            File outputForumDir = new File( "files" + DS + "load" );
+                            File outputForumDir = new File( "files" + DS + LOADS_OUT );
                             if (outputForumDir.exists()) {
                                 if (!outputForumDir.isDirectory()) {
-                                    System.out.println( "WARNING: Path \"files" + DS + "load\" is not directory. Loads not supported." );
+                                    System.out.println( "WARNING: Path \"files" + DS + LOADS_OUT + "\" is not directory. Loads not supported." );
                                 }
                             } else {
                                 try {
                                     outputForumDir.mkdirs();
                                 } catch (Exception e) {
-                                    System.out.println( "WARNING: Path \"files" + DS + "load\" can't created. Loads not supported." );
+                                    System.out.println( "WARNING: Path \"files" + DS + LOADS_OUT + "\" can't created. Loads not supported." );
                                 }
                             }
                         } catch (Exception e) {}
