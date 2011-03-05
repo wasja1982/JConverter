@@ -34,6 +34,7 @@
 
 // Добавлено 0.3.2
 // 1) Изменен путь к каталогу файлов (load/loads) для Fapos 0.9.93. +
+// 2) Исправлена ошибка с запрещенными символами +
 
 package Fapos;
 
@@ -254,6 +255,16 @@ public class Converter {
 
         parse = parse.replace("&", "&amp;");
 
+        // Замена служебных символов, которые могут испортить парсинг
+        for (byte i = 0; i < 32; i++) {
+            // Пропуск переноса строки
+            if (i == 10 || i == 13) continue;
+            Character c = (char)i;
+            if (parse.contains(c.toString())) {
+                parse = parse.replace(c.toString(), "&#" + Byte.toString(i) + ";");
+            }
+        }
+
         if (!NO_IMAGE) {
             int i = 1;
             while (parse.contains( "<!--IMG" ) && parse.contains( "-->" )) {
@@ -319,6 +330,23 @@ public class Converter {
         } while (next >= 0 && next < parse.length());
         parse = parse.replace("&", "&amp;");
         parse = toBB(parse);
+
+        // Восстановдение служебных символов
+        int start = parse.indexOf("&#");
+        int end = parse.indexOf(";", start);
+        while (start >= 0 && end >= 0 && end > start) {
+            try {
+                int symb = Integer.parseInt(parse.substring(start + 2, end));
+                Character c = (char)symb;
+                parse = parse.replace(parse.substring(start, end + 1), c.toString());
+                start = parse.indexOf("&#", start);
+                end = parse.indexOf(";", start);
+            } catch (Exception e) {
+                start = parse.indexOf("&#", start + 1);
+                end = parse.indexOf(";", start);
+            }
+        }
+
         parse = parse.replace("&amp;", "&");
         parse = parse.replace("&quot;", "\"");
         parse = parse.replace("&apos;", "'");
