@@ -1,15 +1,3 @@
-// Pro-версия:
-// 1) Перенос фотоальбома.
-// 2) Полный перенос файлов модулей статей, новостей, блогов и FAQ по аналогии с вложениями форума.
-// 3) Парсинг ссылок внутри сайта и модификация их для перенаправления на новые адреса.
-// 4) Модификация страниц (изменение условных кодов).
-// 5) Перенос шаблонов (изменение условных кодов).
-// 6) Модификация ссылок файлового архива, указывающих на файлы, расположенные на сайте.
-// 7) Добавление файлов в архив с архивацией всех файлов и добавлением внутрь архива требуемых файлов о сайте.
-// 8) Усечение полей полного содержания файлового архива при необходимости.
-
-
-
 /*
 -path "path"   - путь к папке бекапа
 -pref pref     - префикс БД
@@ -29,7 +17,9 @@
 -noempty       - отключить генерацию очистки таблиц
 -noimage       - отключить конвертацию изображений в форуме
 -smile         - конвертировать смайлы
- */
+
+ -v0           - режим совместимости с Fapos 0.9.93
+*/
 
 package Fapos;
 
@@ -51,7 +41,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.2" );
+        System.out.println( "JConvertor v0.3.3" );
         String path = ".";
         String pref = "";
         String password = null;
@@ -62,6 +52,7 @@ public class Main {
         boolean noEmpty = false;
         boolean noImage = false;
         boolean parseSmile = false;
+        int version = 1;
 
         for (int i = 0; i < args.length; i++) {
             if (args[i].equalsIgnoreCase("-path")) {
@@ -98,6 +89,8 @@ public class Main {
                 noImage = true;
             } else if (args[i].equalsIgnoreCase("-smile")) {
                 parseSmile = true;
+            } else if (args[i].equalsIgnoreCase("-v0")) {
+                version = 0;
             }
         }
 
@@ -118,6 +111,7 @@ public class Main {
         conv.NO_EMPTY = noEmpty;
         conv.NO_IMAGE = noImage;
         conv.PARSE_SMILE = parseSmile;
+        conv.VERSION = version;
         
         if (conv != null && conv.initUsers()) {
             ArrayList FpsData = null;

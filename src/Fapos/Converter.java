@@ -36,6 +36,13 @@
 // 1) Изменен путь к каталогу файлов (load/loads) для Fapos 0.9.93. +
 // 2) Исправлена ошибка с запрещенными символами +
 
+// Добавлено 0.3.3
+// 1) Модификация для совместимости с Fapos 1.0/1.1:
+// 1.1) Добавлено поле "description" в таблицу "themes". +
+// 1.2) Переименовано поле "new_id" в "entity_id" в таблице "news_comments". +
+// 1.3) Добавлен ключ для совместимости с предыдущими версиями. +
+// 2) Добавлена конвертация описания тем форума. +
+
 package Fapos;
 
 //import java.awt.Graphics2D;
@@ -90,6 +97,8 @@ public class Converter {
     public boolean PARSE_SMILE = false;
     private String LOADS_OUT = "loads";
 
+    public int VERSION = 1;
+
     private TreeMap uUsers = null;
     private TreeMap uUsersMeta = null;
     private ArrayList uAttachDir = null;
@@ -103,11 +112,7 @@ public class Converter {
     }
     
     public Converter(String DUMP, String PREF) {
-        this.DUMP = DUMP + DS;
-        DUMP_TABLES = this.DUMP + "_s1" + DS;
-        ATTACH_TABLES = this.DUMP + "_fr" + DS;
-        AVATAR_TABLES = this.DUMP + "avatar" + DS;
-        LOADS_TABLES = this.DUMP + "_ld" + DS;
+        this( DUMP );
         this.PREF = PREF;
     }
 
@@ -376,10 +381,13 @@ public class Converter {
         } catch (Exception e) {
             id_last_author = "0";
         }
-        String output = String.format("INSERT INTO `" + PREF + "themes`"
-            + " (`id`, `id_forum`, `important`, `id_last_author`, `last_post`, `locked`, `posts`, `views`, `title`, `id_author`) VALUES"
-            + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+        String output = "INSERT INTO `" + PREF + "themes`"
+            + " (`id`, `id_forum`, `important`, `id_last_author`, `last_post`, `locked`, `posts`, `views`, `title`, `id_author`";
+        if (VERSION > 0) output += ", `description`";
+        output += String.format(") VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'",
             uRecord[0], uRecord[1], uRecord[3], id_last_author, parseDate(uRecord[4]), uRecord[5], uRecord[6], uRecord[7], addslashes(uRecord[8]), id_author);
+        if (VERSION > 0) output += String.format(", '%s'", addslashes(uRecord[9]));
+        output += ");";
         return output;
     }
 
@@ -797,9 +805,10 @@ public class Converter {
         if (name == null || name.isEmpty()) {
             name = uRecord[6];
         }
-
+        String column = "entity_id";
+        if (VERSION == 0) column = columnName[moduleID];
         String output = String.format("INSERT INTO `" + PREF + tableName[moduleID] + "`"
-            + " (`" + columnName[moduleID] + "`, `name`, `message`, `ip`, `mail`) VALUES"
+            + " (`" + column + "`, `name`, `message`, `ip`, `mail`) VALUES"
             + " ('%s', '%s', '%s', '%s', '%s');",
             entity_id, name, addslashes("[" + parseDate(uRecord[4]) + "]: " + uRecord[10]), uRecord[9], uRecord[7]);
         return output;
