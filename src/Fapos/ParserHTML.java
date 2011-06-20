@@ -1,8 +1,3 @@
-// http://khpi-iip.mipk.kharkiv.edu/library/extent/prog/iipXML/usax.html
-// Кавычки в ссылках
-// Кавычки в цитате
-// Фиксированный размер шрифта
-
 package Fapos;
 
 import java.util.Stack;
@@ -14,8 +9,8 @@ import org.xml.sax.helpers.DefaultHandler;
 public class ParserHTML extends DefaultHandler {
     public String text = "";
     public boolean parseSmile = false;
-    private Stack span = new Stack();
-    private Stack div = new Stack();
+    public Stack span = new Stack();
+    public Stack div = new Stack();
     //Начало документа
     @Override
     public void startDocument() throws SAXException{
@@ -63,8 +58,8 @@ public class ParserHTML extends DefaultHandler {
                             {"aggrieved", ":aggrieved:"}};
 
         if (qName.equalsIgnoreCase("br") || qName.equalsIgnoreCase("p")) text += "\r\n";
-        else if (qName.equalsIgnoreCase("b")) text += "[b]";
-        else if (qName.equalsIgnoreCase("i")) text += "[i]";
+        else if (qName.equalsIgnoreCase("b") || qName.equalsIgnoreCase("strong")) text += "[b]";
+        else if (qName.equalsIgnoreCase("i") || qName.equalsIgnoreCase("em")) text += "[i]";
         else if (qName.equalsIgnoreCase("u")) text += "[u]";
         else if (qName.equalsIgnoreCase("s")) text += "[s]";
         else if (qName.equalsIgnoreCase("ul")) text += "[list]";
@@ -72,17 +67,19 @@ public class ParserHTML extends DefaultHandler {
         else if (qName.equalsIgnoreCase("img")) {
             boolean change = false;
             if (parseSmile) {
-                for (int i = 0; i < smile.length; i++) {
-                    if (attr.getValue("alt").equals(smile[i][0])) {
-                        text += " " + smile[i][1] + " ";
-                        change = true;
-                        break;
+                if (attr.getValue("alt") != null) {
+                    for (int i = 0; i < smile.length; i++) {
+                        if (attr.getValue("alt").equals(smile[i][0])) {
+                            text += " " + smile[i][1] + " ";
+                            change = true;
+                            break;
+                        }
                     }
                 }
-                if (!change) {
+                if (!change && attr.getValue("src") != null) {
                     text += "[img]" + attr.getValue("src") + "[/img]";
                 }
-            } else {
+            } else if (attr.getValue("src") != null) {
                 text += "[img]" + attr.getValue("src") + "[/img]";
             }
         } else if (qName.equalsIgnoreCase("span")) {
@@ -95,9 +92,12 @@ public class ParserHTML extends DefaultHandler {
                     span.push(0);
                 } else if (style.contains("font-size:")) {
                     String size_style = style.substring(style.indexOf("font-size:") + 10);
-                    if (size_style.indexOf(";") >= 0) size_style = size_style.substring(0, size_style.indexOf(";"));
-                    if (size_style.indexOf("pt") >= 0) size_style = size_style.substring(0, size_style.indexOf("pt"));
-                    int size = Integer.parseInt(size_style);
+                    if (size_style.indexOf(";") >= 0) size_style = size_style.substring(0, size_style.indexOf(";")).trim();
+                    if (size_style.indexOf("pt") >= 0) size_style = size_style.substring(0, size_style.indexOf("pt")).trim();
+                    int size = 0;
+                    try {
+                        size = Integer.parseInt(size_style);
+                    } catch (NumberFormatException e) {}
                     if (size <= 12) size_style = "10";
                     else if (size <= 17) size_style = "15";
                     else if (size <= 22) size_style = "20";
@@ -132,32 +132,34 @@ public class ParserHTML extends DefaultHandler {
     //Окончание элемента
     @Override
     public void endElement(String namespaceURI, String localName, String qName) throws SAXException{
-        if (qName.equalsIgnoreCase("b")) text += "[/b]";
-        else if (qName.equalsIgnoreCase("i")) text += "[/i]";
+        if (qName.equalsIgnoreCase("b") || qName.equalsIgnoreCase("strong")) text += "[/b]";
+        else if (qName.equalsIgnoreCase("i") || qName.equalsIgnoreCase("em")) text += "[/i]";
         else if (qName.equalsIgnoreCase("u")) text += "[/u]";
         else if (qName.equalsIgnoreCase("s")) text += "[/s]";
         else if (qName.equalsIgnoreCase("ul")) text += "[/list]";
         else if (qName.equalsIgnoreCase("ol")) text += "[/list]";
         else if (qName.equalsIgnoreCase("span")) {
-            Integer style = (Integer)span.pop();
-            if (style != null) {
-                if (style == 0) {
-                    text += "[/color]";
-                } else if (style == 1) {
-                    text += "[/size]";
+            if (!span.empty()) {
+                Integer style = (Integer)span.pop();
+                if (style != null) {
+                    if (style == 0) {
+                        text += "[/color]";
+                    } else if (style == 1) {
+                        text += "[/size]";
+                    }
                 }
             }
         } else if (qName.equalsIgnoreCase("div")) {
-            Integer align = (Integer)div.pop();
-            if (align != null) {
-                if (align == 0) {
-                    text += "[/right]";
-                } else if (align == 1) {
-                    text += "[/left]";
-                } else if (align == 2) {
-                    text += "[/center]";
-                } else {
-                    div.push(3);
+            if (!div.empty()) {
+                Integer align = (Integer)div.pop();
+                if (align != null) {
+                    if (align == 0) {
+                        text += "[/right]";
+                    } else if (align == 1) {
+                        text += "[/left]";
+                    } else if (align == 2) {
+                        text += "[/center]";
+                    }
                 }
             }
         } else if (qName.equalsIgnoreCase("a")) {
@@ -172,16 +174,16 @@ public class ParserHTML extends DefaultHandler {
 
     @Override
     public void error (SAXParseException e) {
-        System.out.println(e.toString());
+//        System.out.println(e.toString());
     }
 
     @Override
     public void warning (SAXParseException e) {
-        System.out.println(e.toString());
+//        System.out.println(e.toString());
     }
 
     @Override
     public void fatalError (SAXParseException e) {
-        System.out.println(e.toString());
+//        System.out.println(e.toString());
     }
 }

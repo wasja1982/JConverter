@@ -43,6 +43,12 @@
 // 1.3) Добавлен ключ для совместимости с предыдущими версиями. +
 // 2) Добавлена конвертация описания тем форума. +
 
+// Добавлено 0.3.4
+// 1) Исправлена обработка изображений в вложениях на форуме (многократное повторение одного рисунка). +
+// 2) Добавлен парсинг BB-кода [video]. +
+// 3) Добавлен парсинг BB-кода [audio]. +
+// 4) Исправлен алгоритм парсинга HTML (улучшен разбор ошибочных тегов, возможно отключение ключем "nofix"). +
+
 package Fapos;
 
 //import java.awt.Graphics2D;
@@ -67,6 +73,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 import javax.imageio.ImageIO;
+import org.xml.sax.SAXParseException;
 
 public class Converter {
     private class uBlock {
@@ -95,6 +102,7 @@ public class Converter {
     public boolean NO_EMPTY = false;
     public boolean NO_IMAGE = false;
     public boolean PARSE_SMILE = false;
+    public boolean NO_FIX = false;
     private String LOADS_OUT = "loads";
 
     public int VERSION = 1;
@@ -201,20 +209,6 @@ public class Converter {
 
     private String toBB(String html) {
         String parse = html;
-        int next = 0;
-        do {
-                next = parse.indexOf("<img ", next);
-                if (next >= 0) {
-                    int img_close = parse.indexOf(">", next);
-                    if (img_close > 0 && img_close + 1 <= parse.length() &&
-                        !parse.substring(img_close-1, img_close+1).equals("/>")) {
-                        parse = parse.substring(0, img_close) + "/>" + parse.substring(img_close + 1);
-                        next = img_close;
-                    }
-                }
-                if (next >= 0) next++;
-        } while (next >= 0 && next < parse.length());
-
         ParserHTML parser = new ParserHTML();
         try {
             parser.parseSmile = PARSE_SMILE;
@@ -223,28 +217,187 @@ public class Converter {
             xr.setErrorHandler(parser);
             xr.parse(new InputSource(new StringReader( "<html>" + parse + "</html>" )));
             parse = parser.text;
-        }
-        catch (Exception e){
-            parse = parser.text;
+        } catch (Exception e){
+            if (!NO_FIX && (e instanceof SAXParseException)) {
+                int line = 1;
+                int linestart = -6;
+                for (int i = 0; i < parse.length(); i++) {
+                    if (line == ((SAXParseException)e).getLineNumber()) {
+                        try {
+                            int pos = linestart + ((SAXParseException)e).getColumnNumber() - 1;
+                            if (pos >= 0) {
+                                int symbol = -1;
+                                int tag = -1;
+                                for (int j = pos; j >= 0; j--) {
+                                    if (j < parse.length()) {
+                                        if (parse.charAt(j) == '<' && tag < 0) tag = j;
+                                        if (parse.charAt(j) == '&' && symbol < 0) symbol = j;
+                                        if (tag >= 0 && symbol >= 0) break;
+                                    }
+                                }
+                                // Сброс накопленных DIV
+                                int start = 0;
+                                if (tag > start) start = tag;
+                                if (symbol > start) start = symbol;
+                                int start_search = start;
+                                String p = parse.toUpperCase();
+                                while (parser.div != null && !parser.div.empty()) {
+                                    int end_div = p.indexOf( "</DIV>", start );
+                                    if (end_div >= start_search) {
+                                        int start_div = p.lastIndexOf( "<DIV>", end_div );
+                                        int start_div2 = p.lastIndexOf( "<DIV ", end_div );
+                                        if (start_div2 >= start_search && ((start_div >= start_search && start_div2 > start_div) || start_div < start_search)) start_div = start_div2;
+                                        if (start_div < start_search) {
+                                            // Замена
+                                            String r = parse.substring( 0, end_div );
+                                            Integer align = (Integer)parser.div.pop();
+                                            if (align != null) {
+                                                if (align == 0) {
+                                                    r += "[/right]";
+                                                } else if (align == 1) {
+                                                    r += "[/left]";
+                                                } else if (align == 2) {
+                                                    r += "[/center]";
+                                                }
+                                            }
+                                            r += parse.substring( end_div + 6 );
+                                            parse = r;
+                                            p = parse.toUpperCase();
+                                            start = end_div + 1;
+                                        } else {
+                                            // Пропуск пары
+                                            String r = p.substring( 0, start_div );
+                                            r += "_";
+                                            r += p.substring(start_div + 1, end_div);
+                                            r += "_";
+                                            r += p.substring(end_div + 1);
+                                            p = r;
+                                        }
+                                    } else {
+                                        // Добавление в хвост
+                                        Integer align = (Integer)parser.div.pop();
+                                        if (align != null) {
+                                            if (align == 0) {
+                                                parse += "[/right]";
+                                            } else if (align == 1) {
+                                                parse += "[/left]";
+                                            } else if (align == 2) {
+                                                parse += "[/center]";
+                                            }
+                                        }
+                                        start = parse.length();
+                                    }
+                                }
+                                // Сброс накопленных SPAN
+                                start = start_search;
+                                p = parse.toUpperCase();
+                                while (parser.span != null && !parser.span.empty()) {
+                                    int end_span = p.indexOf( "</SPAN>", start );
+                                    if (end_span >= start_search) {
+                                        int start_span = p.lastIndexOf( "<SPAN>", end_span );
+                                        int start_span2 = p.lastIndexOf( "<SPAN ", end_span );
+                                        if (start_span2 >= start_search && ((start_span >= start_search && start_span2 > start_span) || start_span < start_search)) start_span = start_span2;
+                                        if (start_span < start_search) {
+                                            // Замена
+                                            String r = parse.substring( 0, end_span );
+                                            Integer style = (Integer)parser.span.pop();
+                                            if (style != null) {
+                                                if (style == 0) {
+                                                    r += "[/color]";
+                                                } else if (style == 1) {
+                                                    r += "[/size]";
+                                                }
+                                            }
+                                            r += parse.substring( end_span + 7 );
+                                            parse = r;
+                                            p = parse.toUpperCase();
+                                            start = end_span + 1;
+                                        } else {
+                                            // Пропуск пары
+                                            String r = p.substring( 0, start_span );
+                                            r += "_";
+                                            r += p.substring(start_span + 1, end_span);
+                                            r += "_";
+                                            r += p.substring(end_span + 1);
+                                            p = r;
+                                        }
+                                    } else {
+                                        // Добавление в хвост
+                                        Integer style = (Integer)parser.span.pop();
+                                        if (style != null) {
+                                            if (style == 0) {
+                                                parse += "[/color]";
+                                            } else if (style == 1) {
+                                                parse += "[/size]";
+                                            }
+                                        }
+                                        start = parse.length();
+                                    }
+                                }
+
+                                if (tag >= 0 || symbol >= 0) {
+                                    String substring = "";
+                                    if (tag > symbol) {
+                                        if (parse.charAt( tag ) == '<') {
+                                            substring = "&lt;";
+                                            if (tag < parse.length() - 1) substring += parse.substring( tag + 1 );
+                                        } else if (tag < parse.length()) substring += parse.substring( tag );
+                                    } else {
+                                        substring = "&amp;";
+                                        if (symbol < parse.length() - 1) substring += parse.substring(symbol + 1);
+                                    }
+                                    parse = parser.text + toBB( substring );
+                                }
+                            }
+                        } catch (Exception ee){
+                            //
+                            ee.printStackTrace();
+                        } finally {
+                            break;
+                        }
+                    }
+                    if (parse.startsWith("\n", i)) {
+                        line++;
+                        linestart = i;
+                    }
+                }
+            }
         }
         return parse;
     }
 
     private String HTMLtoBB(String html) {
         String parse = html;
+        if (parse.contains("&gt;") || parse.contains("&lt;")) {
+            System.out.print("");
+        }
         while (parse.contains( "  " )) {
             parse = parse.replace("  ", " ");
         }
-        parse = parse.replace(" <p> ", "\r\n");
-        parse = parse.replace(" <p>", "\r\n");
-        parse = parse.replace("<p> ", "\r\n");
-        parse = parse.replace("<p>", "\r\n");
-        parse = parse.replace(" <br /> ", "\r\n");
-        parse = parse.replace(" <br />", "\r\n");
-        parse = parse.replace("<br /> ", "\r\n");
-        parse = parse.replace("<br />", "\r\n");
-        parse = parse.replace("<li>", "[*]");
-        parse = parse.replace("</li>", "");
+        parse = parse.replaceAll( "<(?i)b>", "[b]" );
+        parse = parse.replaceAll( "</(?i)b>", "[/b]" );
+        parse = parse.replaceAll( "<(?i)strong>", "[b]" );
+        parse = parse.replaceAll( "</(?i)strong>", "[/b]" );
+        parse = parse.replaceAll( "<(?i)i>", "[i]" );
+        parse = parse.replaceAll( "</(?i)i>", "[/i]" );
+        parse = parse.replaceAll( "<(?i)em>", "[i]" );
+        parse = parse.replaceAll( "</(?i)em>", "[/i]" );
+        parse = parse.replaceAll( "<(?i)u>", "[u]" );
+        parse = parse.replaceAll( "</(?i)u>", "[/u]" );
+        parse = parse.replaceAll( "<(?i)s>", "[s]" );
+        parse = parse.replaceAll( "</(?i)s>", "[/s]" );
+        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)</(?i)p>(\\s*)", "<br />" );
+        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)", "<br />" );
+        parse = parse.replaceAll( "(\\s*)</(?i)p>(\\s*)", "<br />" );
+        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "<br />" );
+/*
+        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)</(?i)p>(\\s*)", "\r\n" );
+        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)", "\r\n" );
+        parse = parse.replaceAll( "(\\s*)</(?i)p>(\\s*)", "\r\n" );
+        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "\r\n" );
+*/
+        parse = parse.replaceAll( "<(?i)li>", "[*]" );
+        parse = parse.replaceAll( "</(?i)li>", "" );
 
         parse = parse.replace("&nbsp;", " ");
         parse = parse.replace("&copy;", "©");
@@ -272,29 +425,46 @@ public class Converter {
 
         if (!NO_IMAGE) {
             int i = 1;
-            while (parse.contains( "<!--IMG" ) && parse.contains( "-->" )) {
+            while (parse.contains( "<!--IMG" ) && parse.contains( "-->" ) && i <= 100) {
                 String str = String.format( "<!--IMG%d-->", i );
-                if (parse.contains( str )) {
+                while (parse.contains( str )) {
                     int start = parse.indexOf( str );
                     int end = parse.indexOf( str, start + 1 );
-                    parse = parse.substring(0, start) + String.format("{IMAGE%d}", i) + parse.substring(end + str.length());
+                    if (start >= 0 && end <= start) parse = parse.replace( str, "" );
+                    else parse = parse.substring(0, start) + String.format("{IMAGE%d}", i) + parse.substring(end + str.length());
                 }
                 i++;
             }
         }
+        int next = 0;
+        do {
+            next = parse.indexOf("<img ", next);
+            if (next >= 0) {
+                int img_close = parse.indexOf(">", next);
+                if (img_close > 0 && img_close + 1 <= parse.length() && !parse.substring(img_close-1, img_close+1).equals("/>")) {
+                    parse = parse.substring(0, img_close) + "/>" + parse.substring(img_close + 1);
+                    next = img_close;
+                }
+            }
+            if (next >= 0) next++;
+        } while (next >= 0 && next < parse.length());
         String[] uBlockCodes = { "<!--uzquote-->", "<!--/uzquote-->", // [quote]Цитата из сообщения[/quote]
                                  "<!--uzcode-->", "<!--/uzcode-->", // [code]Код программы[/code]
                                  "<!--BBhide-->", "<!--/BBhide-->", // [hide]Any text goes here...[/hide]
-                                 "<!--uSpoiler-->", "<!--/uSpoiler-->" // [spoiler]Any text goes here...[/spoiler]
+                                 "<!--uSpoiler-->", "<!--/uSpoiler-->", // [spoiler]Any text goes here...[/spoiler]
+                                 "<!--BBvideo-->", "<!--/BBvideo-->", // [video]ссылка на страницу ютуб или рутуб[/video]
+                                 "<!--BBaudio-->", "<!--/BBaudio-->" // [audio]ссылка на музыкальный файл[/audio]
                                 };
         String[][] uBlocksText = {{"<!--uzq-->", "<!--/uzq-->"},
                                   {"<!--uzc-->", "<!--/uzc-->"},
                                   {"<span class=\"UhideBlock\">", "</span>"},
-                                  {"<!--ust-->", "<!--/ust-->"}};
-        String[] uBlocksBB = {"quote", "code", "hide", "spoiler"};
+                                  {"<!--ust-->", "<!--/ust-->"},
+                                  {"_uVideoPlayer({'url':'", "'"},
+                                  {"_uAudioPlayer({'url':'", "'"}};
+        String[] uBlocksBB = {"quote", "code", "hide", "spoiler", "video", "audio"};
 
         Stack<uBlock> uBlocks = new Stack<uBlock>();
-        int next = 0;
+        next = 0;
         do {
             int min_pos = parse.length();
             int min_type = -1;
@@ -318,9 +488,12 @@ public class Converter {
                             name = block.substring(block.indexOf("<!--qn-->") + 9, block.indexOf("<!--/qn-->"));
                     }
                     if (block.contains(uBlocksText[find_type][0]))
-                        if (block.contains(uBlocksText[find_type][1]))
-                            text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length(), block.lastIndexOf(uBlocksText[find_type][1]));
-                        else
+                        if (block.contains(uBlocksText[find_type][1])) {
+                            if (find_type == 4 || find_type == 5) { // Video & Audio
+                                int pos = block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length();
+                                text = block.substring(pos, block.indexOf(uBlocksText[find_type][1], pos));
+                            } else text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length(), block.lastIndexOf(uBlocksText[find_type][1]));
+                        } else
                             text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length());
                     
                     if (find_type != 1) text = toBB(text); // Code
@@ -328,12 +501,13 @@ public class Converter {
                     if (name != null & !name.isEmpty()) block += "=\"" + name + "\"";
                     block += "]" + text + "[/" + uBlocksBB[find_type] + "]";
                     parse = parse.substring(0, uBlocks.peek().pos) + block + parse.substring(min_pos + uBlockCodes[min_type].length());
-                    next = uBlocks.peek().pos + block.length() + 1;
+                    next = uBlocks.peek().pos + block.length();
                     uBlocks.pop();
                 }
             }
         } while (next >= 0 && next < parse.length());
         parse = parse.replace("&", "&amp;");
+
         parse = toBB(parse);
 
         // Восстановдение служебных символов
@@ -357,6 +531,7 @@ public class Converter {
         parse = parse.replace("&apos;", "'");
         parse = parse.replace("&lt;", "<");
         parse = parse.replace("&gt;", ">");
+        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "\r\n" );
         return parse;
     }
 
@@ -1089,7 +1264,7 @@ public class Converter {
                 String line_int = "";
                 while ( ( line = br.readLine () ) != null ) {
                     if ( line.lastIndexOf("\\") == line.length() - 1 ) {
-                        line_int += line.substring(0, line.length() - 1) + "<br />";
+                        line_int += line.substring(0, line.length() - 1) + "<BR />";
                         continue;
                     } else {
                         line_int += line;

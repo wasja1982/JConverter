@@ -17,6 +17,7 @@
 -noempty       - отключить генерацию очистки таблиц
 -noimage       - отключить конвертацию изображений в форуме
 -smile         - конвертировать смайлы
+-nofix         - отключить разбор ошибочных тегов (ускоряет обработку)
 
  -v0           - режим совместимости с Fapos 0.9.93
 */
@@ -41,7 +42,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.3" );
+        System.out.println( "JConvertor v0.3.4" );
         String path = ".";
         String pref = "";
         String password = null;
@@ -52,6 +53,7 @@ public class Main {
         boolean noEmpty = false;
         boolean noImage = false;
         boolean parseSmile = false;
+        boolean noFix = false;
         int version = 1;
 
         for (int i = 0; i < args.length; i++) {
@@ -89,6 +91,8 @@ public class Main {
                 noImage = true;
             } else if (args[i].equalsIgnoreCase("-smile")) {
                 parseSmile = true;
+            } else if (args[i].equalsIgnoreCase("-nofix")) {
+                noFix = true;
             } else if (args[i].equalsIgnoreCase("-v0")) {
                 version = 0;
             }
@@ -111,6 +115,7 @@ public class Main {
         conv.NO_EMPTY = noEmpty;
         conv.NO_IMAGE = noImage;
         conv.PARSE_SMILE = parseSmile;
+        conv.NO_FIX = noFix;
         conv.VERSION = version;
         
         if (conv != null && conv.initUsers()) {
