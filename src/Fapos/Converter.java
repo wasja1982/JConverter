@@ -368,9 +368,6 @@ public class Converter {
 
     private String HTMLtoBB(String html) {
         String parse = html;
-        if (parse.contains("&gt;") || parse.contains("&lt;")) {
-            System.out.print("");
-        }
         while (parse.contains( "  " )) {
             parse = parse.replace("  ", " ");
         }
@@ -390,12 +387,6 @@ public class Converter {
         parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)", "<br />" );
         parse = parse.replaceAll( "(\\s*)</(?i)p>(\\s*)", "<br />" );
         parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "<br />" );
-/*
-        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)</(?i)p>(\\s*)", "\r\n" );
-        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)", "\r\n" );
-        parse = parse.replaceAll( "(\\s*)</(?i)p>(\\s*)", "\r\n" );
-        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "\r\n" );
-*/
         parse = parse.replaceAll( "<(?i)li>", "[*]" );
         parse = parse.replaceAll( "</(?i)li>", "" );
 
