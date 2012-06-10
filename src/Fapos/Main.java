@@ -15,11 +15,16 @@
 -wa            - разрешить загрузку аватаров из сети Internet
 
 -noempty       - отключить генерацию очистки таблиц
--noimage       - отключить конвертацию изображений в форуме
+-noimage       - отключить конвертацию изображений в форуме (с версии 0.3.5 - в форуме, статьях, новостях, блогах и FAQ)
 -smile         - конвертировать смайлы
 -nofix         - отключить разбор ошибочных тегов (ускоряет обработку)
 
  -v0           - режим совместимости с Fapos 0.9.93
+ -v1           - режим совместимости с Fapos 1.0/1.1
+ -v2           - режим совместимости с Fapos 1.1.8 beta
+ -v3           - режим совместимости с Fapos 1.1.9
+ -v4           - режим совместимости с Fapos 1.2 beta
+ -v5           - режим совместимости с Fapos 1.3 RC (по умолчанию)
 */
 
 package Fapos;
@@ -29,6 +34,8 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Main {
+    static int CURRENT_VERSION = 5;
+
     private static void createFile(String filename, ArrayList data) {
         try {
             OutputStreamWriter buf = new OutputStreamWriter ( new FileOutputStream ( filename ), "UTF-8" );
@@ -42,7 +49,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.4" );
+        System.out.println( "JConvertor v0.3.5" );
         String path = ".";
         String pref = "";
         String password = null;
@@ -54,7 +61,7 @@ public class Main {
         boolean noImage = false;
         boolean parseSmile = false;
         boolean noFix = false;
-        int version = 1;
+        int version = CURRENT_VERSION;
 
         for (int i = 0; i < args.length; i++) {
             if (args[i].equalsIgnoreCase("-path")) {
@@ -93,8 +100,16 @@ public class Main {
                 parseSmile = true;
             } else if (args[i].equalsIgnoreCase("-nofix")) {
                 noFix = true;
-            } else if (args[i].equalsIgnoreCase("-v0")) {
-                version = 0;
+            } else if (args[i].toLowerCase().startsWith("-v") && args[i].length() > 2) {
+                String ver = args[i].substring( 2 );
+                try {
+                    version = Integer.parseInt( ver );
+                } catch (NumberFormatException ex) {
+                    version = CURRENT_VERSION;
+                }
+                if (version < 0 || version > CURRENT_VERSION) {
+                    version = CURRENT_VERSION;
+                }
             }
         }
 
@@ -108,7 +123,6 @@ public class Main {
         String[] uFiles = new String[] {"users", "forum", "loads", "stat", "news", "comments"};
 
         Converter conv = new Converter(path, pref);
-//        Converter_trash conv = new Converter_trash(path, pref);
 
         conv.PASSWORD = password;
         conv.USE_WEB_AVATARS = useWebAvatars;
