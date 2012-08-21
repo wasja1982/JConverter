@@ -1522,31 +1522,31 @@ public class Converter {
                     if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
                         if (!addNews) {
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('1', '0', 'Новости', 'section');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('1', '0', 'Новости'" + (VERSION > 3 ? "" : ", 'section'") + ");");
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('4', '1', 'Без категории', 'category');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('4', '1', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
                             addNews = true;
                         }
                     } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
                         if (!addBlog) {
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('2', '0', 'Блоги', 'section');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('2', '0', 'Блоги'" + (VERSION > 3 ? "" : ", 'section'") + ");");
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('5', '2', 'Без категории', 'category');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('5', '2', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
                             addBlog = true;
                         }
                     } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
                         if (!addFAQ) {
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('3', '0', 'FAQ', 'section');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('3', '0', 'FAQ'" + (VERSION > 3 ? "" : ", 'section'") + ");");
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`, `class`) VALUES"
-                                        + " ('6', '3', 'Без категории', 'category');");
+                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
+                                        + " ('6', '3', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
                             addFAQ = true;
                         }
                     }
