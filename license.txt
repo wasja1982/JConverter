@@ -1,0 +1,7 @@
+Конвертор бекапа Ucoz в Fapos
+============================
+
+Это приложение доступно по лицензии Creative Commons «Attribution-ShareAlike» («Атрибуция — На тех же условиях») 4.0 Всемирная. 
+Чтобы увидеть копию этой лицензии, посетите http://creativecommons.org/licenses/by-sa/4.0/.
+
+Copyright (C) 2011 Alexandr Verenik
