@@ -1149,6 +1149,7 @@ public class Converter {
         if (uRecord.length < 11) {
             return null;
         }
+        String[] moduleName = {null, "news", "news", "stat", "foto", "loads", null, null};
         String[] tableName = {null, "news_comments", "news_comments", "stat_comments", null, "loads_comments", null, null};
         String[] columnName = {null, "new_id", "new_id", "entity_id", null, "entity_id", null, null};
         int moduleID = 0;
@@ -1157,7 +1158,8 @@ public class Converter {
         } catch (Exception e) {
             return null;
         }
-        if (moduleID >= tableName.length || tableName[moduleID] == null) return null;
+        if (VERSION < 6 && (moduleID >= tableName.length || tableName[moduleID] == null)) return null;
+        if (VERSION >= 6 && (moduleID >= moduleName.length || moduleName[moduleID] == null)) return null;
         int entity_id = 0;
         try {
             entity_id = Integer.parseInt( uRecord[2] );
@@ -1175,14 +1177,16 @@ public class Converter {
         }
         String column = "entity_id";
         if (VERSION == 0) column = columnName[moduleID];
-        String output = String.format("INSERT INTO `" + PREF + tableName[moduleID] + "`"
+        String output = String.format("INSERT INTO `" + PREF + (VERSION < 6 ? tableName[moduleID] : "comments") + "`"
             + " (`" + column + "`, `name`, `message`, `ip`, `mail`"
             + (VERSION > 2 ? ", `date`" : "" ) // 1.1.9 и новее
             + (VERSION > 4 ? ", `user_id`" : "" ) // 1.3 RC и новее
+            + (VERSION >= 6 ? ", `module`" : "" ) // 2.1 RC7 и новее
             + ") VALUES"
             + " ('%s', '%s', '%s', '%s', '%s'"
             + (VERSION > 2 ? ", '" + parseDate(uRecord[4]) + "'" : "" ) // 1.1.9 и новее
             + (VERSION > 4 ? ", '" + (uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0") + "'" : "" ) // 1.3 RC и новее
+            + (VERSION >= 6 ? ", '" + moduleName[moduleID] + "'" : "" ) // 2.1 RC7 и новее
             + ");",
             entity_id, name, addslashes((VERSION > 2 ? "" : "[" + parseDate(uRecord[4]) + "]: ") + uRecord[10]), uRecord[9], uRecord[7]);
         return output;
