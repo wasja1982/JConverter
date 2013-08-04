@@ -25,7 +25,8 @@
  -v3           - режим совместимости с Fapos 1.1.9
  -v4           - режим совместимости с Fapos 1.2 beta
  -v5           - режим совместимости с Fapos 1.3 RC
- -v6           - режим совместимости с Fapos 2.1 RC7 (по умолчанию)
+ -v6           - режим совместимости с Fapos 2.1 RC7
+ -v7           - режим совместимости с Fapos 2.2 RC1 (по умолчанию)
 */
 
 package Fapos;
@@ -35,7 +36,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Main {
-    static int CURRENT_VERSION = 5;
+    static int CURRENT_VERSION = 7;
 
     private static void createFile(String filename, ArrayList data) {
         try {
@@ -50,7 +51,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.5" );
+        System.out.println( "JConvertor v0.3.6" );
         String path = ".";
         String pref = "";
         String password = null;

@@ -56,6 +56,10 @@
 // 4) Добавлен импорт даты и пользователя для комментариев. +
 // 5) Добавлен импорт ссылки с удаленного сервера для материалов каталога файлов. +
 
+// Добавлено 0.3.6
+// 1) Модификация для совместимости с версиями Fapos 2.1 RC7 (единая таблица для комментариев).
+// 2) Модификация для совместимости с версиями Fapos 2.2 RC1 (поддержка премодерации материалов).
+
 package Fapos;
 
 //import java.awt.Graphics2D;
@@ -843,8 +847,11 @@ public class Converter {
                 + " (`id`, `title`, `main`, `author_id`, `category_id`,"
                 + " `views`, `downloads`, `download`, `date`, `comments`,"
                 + " `description`, `sourse`, `sourse_email`, `sourse_site`, `commented`,"
+                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
                 + " `available`, `view_on_home`, `on_home_top`, `download_url`, `download_url_size`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                + " '%s', '%s', '%s', '%s', '%s');",
                 uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
                 uRecord[13], uRecord[14], download, parseDate(uRecord[5]), uRecord[8],
                 addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29], commented,
@@ -947,8 +954,11 @@ public class Converter {
             output += String.format("INSERT INTO `" + PREF + "news`"
                 + " (`id`, `title`, `main`, `author_id`, `category_id`,"
                 + " `views`, `date`, `comments`, `description`, `commented`,"
+                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
                 + " `available`, `view_on_home`, `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                + " '%s', '%s', '%s');",
                 id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
                 uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]), commented,
                 available, "1", on_home_top);
@@ -1033,8 +1043,11 @@ public class Converter {
             output += String.format("INSERT INTO `" + PREF + "news`"
                 + " (`id`, `title`, `main`, `author_id`, `category_id`,"
                 + " `date`, `description`, `sourse`, `sourse_email`, `available`,"
+                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
                 + " `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                + " '%s');",
                 id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
                 parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15], available,
                 "1");
@@ -1116,8 +1129,11 @@ public class Converter {
                 + " (`id`, `title`, `main`, `author_id`, `category_id`,"
                 + " `views`, `date`, `comments`, `description`, `sourse`,"
                 + " `sourse_email`, `sourse_site`, `commented`, `available`, `view_on_home`,"
+                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
                 + " `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                + " '%s');",
                 uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
                 uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
                 uRecord[16], uRecord[17], uRecord[18], commented, available,
