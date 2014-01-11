@@ -26,7 +26,8 @@
  -v4           - режим совместимости с Fapos 1.2 beta
  -v5           - режим совместимости с Fapos 1.3 RC
  -v6           - режим совместимости с Fapos 2.1 RC7
- -v7           - режим совместимости с Fapos 2.2 RC1 (по умолчанию)
+ -v7           - режим совместимости с Fapos 2.2 RC1
+ -v8           - режим совместимости с Fapos 2.4 RC5 (по умолчанию)
 */
 
 package Fapos;
@@ -36,7 +37,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Main {
-    static int CURRENT_VERSION = 7;
+    static int CURRENT_VERSION = 8;
 
     private static void createFile(String filename, ArrayList data) {
         try {

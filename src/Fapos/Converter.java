@@ -59,6 +59,7 @@
 // Добавлено 0.3.6
 // 1) Модификация для совместимости с версиями Fapos 2.1 RC7 (единая таблица для комментариев).
 // 2) Модификация для совместимости с версиями Fapos 2.2 RC1 (поддержка премодерации материалов).
+// 3) Модификация для совместимости с версиями Fapos 2.4 RC5 (поддержка путей для категорий).
 
 package Fapos;
 
@@ -709,8 +710,12 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "loads_sections`"
-                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '');",
+                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
+                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                + ") VALUES"
+                + " ('%s', '%s', '%s', '%s', '%s', ''"
+                + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
+                + ");",
                 uRecord[0], section_id, addslashes(uRecord[5]), addslashes(uRecord[6]), "0");
         } else { // Старше 1.2 beta
             String class_sections = "category";
@@ -749,8 +754,12 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "news_sections`"
-                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '');",
+                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
+                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                + ") VALUES"
+                + " ('%s', '%s', '%s', '%s', '%s', ''"
+                + (VERSION >= 8 ? ", '" + mode + ".'" : "") // 2.4 RC5 и новее
+                + ");",
                 id, mode, addslashes(uRecord[3]), addslashes(uRecord[4]), "1");
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "news_sections`"
@@ -777,8 +786,12 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "stat_sections`"
-                + " (`id`, `parent_id`, `title`, `view_on_home`, `no_access`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '');",
+                + " (`id`, `parent_id`, `title`, `view_on_home`, `no_access`"
+                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                + ") VALUES"
+                + " ('%s', '%s', '%s', '%s', ''"
+                + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
+                + ");",
                 uRecord[0], section_id, addslashes(uRecord[5]), "1");
         } else { // Старше 1.2 beta
             String class_sections = "category";
