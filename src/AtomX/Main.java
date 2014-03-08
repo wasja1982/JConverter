@@ -30,7 +30,7 @@
  -v8           - режим совместимости с Fapos 2.4 RC5 (по умолчанию)
 */
 
-package Fapos;
+package AtomX;
 
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
@@ -145,7 +145,7 @@ public class Main {
                 ArrayList temp = conv.getSQL(uTables[i]);
                 if (temp != null) {
                     if (sqlSplit) {
-                        String filename = "fapos_" + uFiles[i] + ".sql";
+                        String filename = "atomx_" + uFiles[i] + ".sql";
                         System.out.println( "Save \"" + filename + "\"..." );
                         createFile(filename, temp);
                     } else {
@@ -154,8 +154,8 @@ public class Main {
                 }
             }
             if (FpsData != null) {
-                System.out.println( "Save \"fapos.sql\"..." );
-                createFile("fapos.sql", FpsData);
+                System.out.println( "Save \"atomx.sql\"..." );
+                createFile("atomx.sql", FpsData);
             }
         }
     }

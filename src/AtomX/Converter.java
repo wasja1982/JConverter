@@ -61,7 +61,7 @@
 // 2) Модификация для совместимости с версиями Fapos 2.2 RC1 (поддержка премодерации материалов).
 // 3) Модификация для совместимости с версиями Fapos 2.4 RC5 (поддержка путей для категорий).
 
-package Fapos;
+package AtomX;
 
 //import java.awt.Graphics2D;
 import java.awt.Transparency;
