@@ -27,7 +27,8 @@
  -v5           - режим совместимости с Fapos 1.3 RC
  -v6           - режим совместимости с Fapos 2.1 RC7
  -v7           - режим совместимости с Fapos 2.2 RC1
- -v8           - режим совместимости с Fapos 2.4 RC5 (по умолчанию)
+ -v8           - режим совместимости с Fapos 2.4 RC5
+ -v9           - режим совместимости с AtomX 2.5 RC1 (по умолчанию)
 */
 
 package AtomX;
@@ -37,7 +38,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Main {
-    static int CURRENT_VERSION = 8;
+    static int CURRENT_VERSION = 9;
 
     private static void createFile(String filename, ArrayList data) {
         try {

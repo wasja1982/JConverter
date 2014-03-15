@@ -60,6 +60,7 @@
 // 1) Модификация для совместимости с версиями Fapos 2.1 RC7 (единая таблица для комментариев).
 // 2) Модификация для совместимости с версиями Fapos 2.2 RC1 (поддержка премодерации материалов).
 // 3) Модификация для совместимости с версиями Fapos 2.4 RC5 (поддержка путей для категорий).
+// 4) Модификация для совместимости с версиями AtomX 2.5 RC1 (поддержка премодерации комментариев).
 
 package AtomX;
 
@@ -1211,11 +1212,13 @@ public class Converter {
             + (VERSION > 2 ? ", `date`" : "" ) // 1.1.9 и новее
             + (VERSION > 4 ? ", `user_id`" : "" ) // 1.3 RC и новее
             + (VERSION >= 6 ? ", `module`" : "" ) // 2.1 RC7 и новее
+            + (VERSION >= 9 ? ", `premoder`" : "" ) // 2.5 RC1 и новее
             + ") VALUES"
             + " ('%s', '%s', '%s', '%s', '%s'"
             + (VERSION > 2 ? ", '" + parseDate(uRecord[4]) + "'" : "" ) // 1.1.9 и новее
             + (VERSION > 4 ? ", '" + (uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0") + "'" : "" ) // 1.3 RC и новее
             + (VERSION >= 6 ? ", '" + moduleName[moduleID] + "'" : "" ) // 2.1 RC7 и новее
+            + (VERSION >= 9 ? "'confirmed'" : "" ) // 2.5 RC1 и новее
             + ");",
             entity_id, name, addslashes((VERSION > 2 ? "" : "[" + parseDate(uRecord[4]) + "]: ") + uRecord[10]), uRecord[9], uRecord[7]);
         return output;
