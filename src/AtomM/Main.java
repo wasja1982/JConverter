@@ -31,7 +31,7 @@
  -v9           - режим совместимости с AtomX 2.5 RC1 (по умолчанию)
 */
 
-package AtomX;
+package AtomM;
 
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
