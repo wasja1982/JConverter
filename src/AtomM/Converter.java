@@ -410,17 +410,17 @@ public class Converter {
         } while (next >= 0 && next < parse.length());
         String[] uBlockCodes = { "<!--uzquote-->", "<!--/uzquote-->", // [quote]Цитата из сообщения[/quote]
                                  "<!--uzcode-->", "<!--/uzcode-->", // [code]Код программы[/code]
-                                 "<!--BBhide-->", "<!--/BBhide-->", // [hide]Any text goes here...[/hide]
-                                 "<!--uSpoiler-->", "<!--/uSpoiler-->", // [spoiler]Any text goes here...[/spoiler]
-                                 "<!--BBvideo-->", "<!--/BBvideo-->", // [video]ссылка на страницу ютуб или рутуб[/video]
-                                 "<!--BBaudio-->", "<!--/BBaudio-->" // [audio]ссылка на музыкальный файл[/audio]
-                                };
+            "<!--BBhide-->", "<!--/BBhide-->", // [hide]Any text goes here...[/hide]
+            "<!--uSpoiler-->", "<!--/uSpoiler-->", // [spoiler]Any text goes here...[/spoiler]
+            "<!--BBvideo-->", "<!--/BBvideo-->", // [video]ссылка на страницу ютуб или рутуб[/video]
+            "<!--BBaudio-->", "<!--/BBaudio-->" // [audio]ссылка на музыкальный файл[/audio]
+    };
         String[][] uBlocksText = {{"<!--uzq-->", "<!--/uzq-->"},
-                                  {"<!--uzc-->", "<!--/uzc-->"},
-                                  {"<span class=\"UhideBlock\">", "</span>"},
-                                  {"<!--ust-->", "<!--/ust-->"},
-                                  {"_uVideoPlayer({'url':'", "'"},
-                                  {"_uAudioPlayer({'url':'", "'"}};
+        {"<!--uzc-->", "<!--/uzc-->"},
+        {"<span class=\"UhideBlock\">", "</span>"},
+        {"<!--ust-->", "<!--/ust-->"},
+        {"_uVideoPlayer({'url':'", "'"},
+        {"_uAudioPlayer({'url':'", "'"}};
         String[] uBlocksBB = {"quote", "code", "hide", "spoiler", "video", "audio"};
 
         Stack<uBlock> uBlocks = new Stack<uBlock>();
@@ -582,9 +582,9 @@ public class Converter {
         }
 
         String output = String.format("INSERT INTO `" + PREF + "posts`"
-            + " (`id`, `id_theme`, `time`, `message`, `id_author`, `edittime`, `attaches`) VALUES"
-            + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-            uRecord[0], uRecord[1], parseDate(uRecord[2]), addslashes(uRecord[4]), id_author, parseDate(uRecord[9]), attach);
+                + " (`id`, `id_theme`, `time`, `message`, `id_author`, `edittime`, `attaches`) VALUES"
+                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                uRecord[0], uRecord[1], parseDate(uRecord[2]), addslashes(uRecord[4]), id_author, parseDate(uRecord[9]), attach);
         return output_a + output;
     }
 
@@ -598,9 +598,9 @@ public class Converter {
         String output;
         if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
             output = String.format("INSERT INTO `" + PREF + "forum_cat`"
-                + " (`id`, `title`) VALUES"
-                + " ('%s', '%s');",
-                uRecord[0], addslashes(uRecord[5]));
+                    + " (`id`, `title`) VALUES"
+                    + " ('%s', '%s');",
+                    uRecord[0], addslashes(uRecord[5]));
         } else {
             if (uRecord.length < 17) {
                 return null;
@@ -624,9 +624,9 @@ public class Converter {
                 posts = "0";
             }
             output = String.format("INSERT INTO `" + PREF + "forums`"
-                + " (`id`, `in_cat`, `title`, `last_theme_id`, `themes`, `posts`, `description`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], uRecord[1], addslashes(uRecord[5]), last_theme_id, themes, posts, addslashes(uRecord[6]));
+                    + " (`id`, `in_cat`, `title`, `last_theme_id`, `themes`, `posts`, `description`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], uRecord[1], addslashes(uRecord[5]), last_theme_id, themes, posts, addslashes(uRecord[6]));
         }
         return output;
     }
@@ -647,13 +647,13 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "loads_sections`"
-                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
-                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                + ") VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', ''"
+                    + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
+                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                    + ") VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', ''"
                 + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
-                + ");",
-                uRecord[0], section_id, addslashes(uRecord[5]), addslashes(uRecord[6]), "0");
+                    + ");",
+                    uRecord[0], section_id, addslashes(uRecord[5]), addslashes(uRecord[6]), "0");
         } else { // Старше 1.2 beta
             String class_sections = "category";
             try {
@@ -668,9 +668,9 @@ public class Converter {
             }
 
             output = String.format("INSERT INTO `" + PREF + "loads_sections`"
-                + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], section_id, addslashes(uRecord[5]), class_sections, addslashes(uRecord[6]), "0");
+                    + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], section_id, addslashes(uRecord[5]), class_sections, addslashes(uRecord[6]), "0");
         }
         return output;
     }
@@ -691,18 +691,18 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "news_sections`"
-                + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
-                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                + ") VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', ''"
-                + (VERSION >= 8 ? ", '" + mode + ".'" : "") // 2.4 RC5 и новее
-                + ");",
-                id, mode, addslashes(uRecord[3]), addslashes(uRecord[4]), "1");
+                    + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
+                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                    + ") VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', ''"
+                    + (VERSION >= 8 ? ", '" + mode + ".'" : "") // 2.4 RC5 и новее
+                    + ");",
+                    id, mode, addslashes(uRecord[3]), addslashes(uRecord[4]), "1");
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "news_sections`"
-                + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s');",
-                id, mode, addslashes(uRecord[3]), "category", addslashes(uRecord[4]), "1");
+                    + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s');",
+                    id, mode, addslashes(uRecord[3]), "category", addslashes(uRecord[4]), "1");
         }
         return output;
     }
@@ -723,10 +723,10 @@ public class Converter {
         String output = null;
         if (VERSION > 3) { // 1.2 beta и новее
             output = String.format("INSERT INTO `" + PREF + "stat_sections`"
-                + " (`id`, `parent_id`, `title`, `view_on_home`, `no_access`"
-                + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                + ") VALUES"
-                + " ('%s', '%s', '%s', '%s', ''"
+                    + " (`id`, `parent_id`, `title`, `view_on_home`, `no_access`"
+                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
+                    + ") VALUES"
+                    + " ('%s', '%s', '%s', '%s', ''"
                 + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
                 + ");",
                 uRecord[0], section_id, addslashes(uRecord[5]), "1");
@@ -744,9 +744,9 @@ public class Converter {
             }
 
             output = String.format("INSERT INTO `" + PREF + "stat_sections`"
-                + " (`id`, `section_id`, `title`, `class`, `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], section_id, addslashes(uRecord[5]), class_sections, "1");
+                    + " (`id`, `section_id`, `title`, `class`, `view_on_home`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], section_id, addslashes(uRecord[5]), class_sections, "1");
         }
         return output;
     }
@@ -794,33 +794,33 @@ public class Converter {
                 lsize = Long.parseLong(uRecord[23]);
             } catch (NumberFormatException ex) {}
             output = String.format("INSERT INTO `" + PREF + "loads`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `views`, `downloads`, `download`, `date`, `comments`,"
-                + " `description`, `sourse`, `sourse_email`, `sourse_site`, `commented`,"
-                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                + " `available`, `view_on_home`, `on_home_top`, `download_url`, `download_url_size`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                + " '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
-                uRecord[13], uRecord[14], download, parseDate(uRecord[5]), uRecord[8],
-                addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29], commented,
-                available, "0", on_home_top, uRecord[22], lsize);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `views`, `downloads`, `download`, `date`, `comments`,"
+                    + " `description`, `sourse`, `sourse_email`, `sourse_site`, `commented`,"
+                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
+                    + " `available`, `view_on_home`, `on_home_top`, `download_url`, `download_url_size`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                    + " '%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
+                    uRecord[13], uRecord[14], download, parseDate(uRecord[5]), uRecord[8],
+                    addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29], commented,
+                    available, "0", on_home_top, uRecord[22], lsize);
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "loads`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `section_id`, `views`, `downloads`, `download`, `date`,"
-                + " `comments`, `description`, `sourse`, `sourse_email`, `sourse_site`,"
-                + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
-                uRecord[1], uRecord[13], uRecord[14], download, parseDate(uRecord[5]),
-                uRecord[8], addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29],
-                commented, available, "0", on_home_top);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `section_id`, `views`, `downloads`, `download`, `date`,"
+                    + " `comments`, `description`, `sourse`, `sourse_email`, `sourse_site`,"
+                    + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
+                    uRecord[1], uRecord[13], uRecord[14], download, parseDate(uRecord[5]),
+                    uRecord[8], addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29],
+                    commented, available, "0", on_home_top);
             if (uRecord[22] != null && !uRecord[22].isEmpty()) {
                 output += String.format("INSERT INTO `" + PREF + "loads_add_content`"
-                    + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
-                    "1", uRecord[0], uRecord[22]);
+                        + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
+                        "1", uRecord[0], uRecord[22]);
             }
         }
         return output;
@@ -888,12 +888,12 @@ public class Converter {
                             }
                             if (exist) {
                                 output += String.format("INSERT INTO `" + PREF + "news_attaches`"
-                                    + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                    + " `date`, `is_image`) VALUES"
-                                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                    id, author_id, Integer.toString(i + 1), new_filename,
-                                    Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
-                                    parseDate(uRecord[8]), is_image);
+                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
+                                        + " `date`, `is_image`) VALUES"
+                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
+                                        id, author_id, Integer.toString(i + 1), new_filename,
+                                        Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
+                                        parseDate(uRecord[8]), is_image);
                             } else {
                                 System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
                             }
@@ -902,25 +902,25 @@ public class Converter {
                 }
             }
             output += String.format("INSERT INTO `" + PREF + "news`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `views`, `date`, `comments`, `description`, `commented`,"
-                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                + " `available`, `view_on_home`, `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                + " '%s', '%s', '%s');",
-                id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
-                uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]), commented,
-                available, "1", on_home_top);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `views`, `date`, `comments`, `description`, `commented`,"
+                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
+                    + " `available`, `view_on_home`, `on_home_top`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                    + " '%s', '%s', '%s');",
+                    id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
+                    uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]), commented,
+                    available, "1", on_home_top);
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "news`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `section_id`, `views`, `date`, `comments`, `description`,"
-                + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
-                mode, uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]),
-                commented, available, "1", on_home_top);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `section_id`, `views`, `date`, `comments`, `description`,"
+                    + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                    id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
+                    mode, uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]),
+                    commented, available, "1", on_home_top);
         }
         return output;
     }
@@ -977,12 +977,12 @@ public class Converter {
                             }
                             if (exist) {
                                 output += String.format("INSERT INTO `" + PREF + "news_attaches`"
-                                    + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                    + " `date`, `is_image`) VALUES"
-                                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                    id, author_id, Integer.toString(i + 1), new_filename,
-                                    Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
-                                    parseDate(uRecord[4]), is_image);
+                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
+                                        + " `date`, `is_image`) VALUES"
+                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
+                                        id, author_id, Integer.toString(i + 1), new_filename,
+                                        Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
+                                        parseDate(uRecord[4]), is_image);
                             } else {
                                 System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
                             }
@@ -991,25 +991,25 @@ public class Converter {
                 }
             }
             output += String.format("INSERT INTO `" + PREF + "news`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `date`, `description`, `sourse`, `sourse_email`, `available`,"
-                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                + " `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                + " '%s');",
-                id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
-                parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15], available,
-                "1");
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `date`, `description`, `sourse`, `sourse_email`, `available`,"
+                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
+                    + " `view_on_home`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                    + " '%s');",
+                    id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
+                    parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15], available,
+                    "1");
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "news`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `section_id`, `date`, `description`, `sourse`, `sourse_email`,"
-                + " `available`, `view_on_home`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
-                "3", parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15],
-                available, "1");
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `section_id`, `date`, `description`, `sourse`, `sourse_email`,"
+                    + " `available`, `view_on_home`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                    id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
+                    "3", parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15],
+                    available, "1");
         }
         return output;
     }
@@ -1062,12 +1062,12 @@ public class Converter {
                             }
                             if (exist) {
                                 output += String.format("INSERT INTO `" + PREF + "stat_attaches`"
-                                    + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                    + " `date`, `is_image`) VALUES"
-                                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                    uRecord[0], author_id, Integer.toString(i + 1), new_filename,
-                                    Long.toString(new File("files" + DS + "stat" + DS + new_filename).length()),
-                                    parseDate(uRecord[5]), is_image);
+                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
+                                        + " `date`, `is_image`) VALUES"
+                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
+                                        uRecord[0], author_id, Integer.toString(i + 1), new_filename,
+                                        Long.toString(new File("files" + DS + "stat" + DS + new_filename).length()),
+                                        parseDate(uRecord[5]), is_image);
                             } else {
                                 System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
                             }
@@ -1076,34 +1076,34 @@ public class Converter {
                 }
             }
             output += String.format("INSERT INTO `" + PREF + "stat`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `views`, `date`, `comments`, `description`, `sourse`,"
-                + " `sourse_email`, `sourse_site`, `commented`, `available`, `view_on_home`,"
-                + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                + " `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                + " '%s');",
-                uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
-                uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
-                uRecord[16], uRecord[17], uRecord[18], commented, available,
-                "1", on_home_top);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `views`, `date`, `comments`, `description`, `sourse`,"
+                    + " `sourse_email`, `sourse_site`, `commented`, `available`, `view_on_home`,"
+                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
+                    + " `on_home_top`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
+                    + " '%s');",
+                    uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
+                    uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
+                    uRecord[16], uRecord[17], uRecord[18], commented, available,
+                    "1", on_home_top);
         } else { // Старше 1.2 beta
             output = String.format("INSERT INTO `" + PREF + "stat`"
-                + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                + " `section_id`, `views`, `date`, `comments`, `description`,"
-                + " `sourse`, `sourse_email`, `sourse_site`, `commented`, `available`,"
-                + " `view_on_home`, `on_home_top`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
-                uRecord[1], uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
-                uRecord[16], uRecord[17], uRecord[18], commented, available,
-                "1", on_home_top);
+                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
+                    + " `section_id`, `views`, `date`, `comments`, `description`,"
+                    + " `sourse`, `sourse_email`, `sourse_site`, `commented`, `available`,"
+                    + " `view_on_home`, `on_home_top`) VALUES"
+                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+                    uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
+                    uRecord[1], uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
+                    uRecord[16], uRecord[17], uRecord[18], commented, available,
+                    "1", on_home_top);
         }
         if (uRecord[22] != null && !uRecord[22].isEmpty()) {
             output += String.format("INSERT INTO `" + PREF + "stat_add_content`"
-                + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
-                "1", uRecord[0], uRecord[19]);
+                    + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
+                    "1", uRecord[0], uRecord[19]);
         }
         return output;
     }
@@ -1300,11 +1300,11 @@ public class Converter {
                 continue;
             } else {
                 if (uTables[i].equals("users")) {
-                    if (!NO_EMPTY) {
-                        emptySql.add( "TRUNCATE TABLE `" + PREF + "users`;" );
-                    }
-                    // Инициализация папки для работы с аватарами
-                    try {
+                if (!NO_EMPTY) {
+                    emptySql.add(new TruncateQuery(PREF + "users"));
+                }
+                // Инициализация папки для работы с аватарами
+                try {
                         File outputAvatarsDir = new File( "avatars" );
                         if (outputAvatarsDir.exists()) {
                             if (!outputAvatarsDir.isDirectory()) {
@@ -1318,24 +1318,24 @@ public class Converter {
                             }
                         }
                     } catch (Exception e) {}
-                } else if (uTables[i].equals("fr_fr") || uTables[i].equals("forum") || uTables[i].equals("forump")) {
-                    if (!forumEmpty) {
-                        if (!NO_EMPTY) {
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "forum_cat`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "forums`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "themes`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "forum_attaches`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "posts`;" );
-                        }
-                        // Инициализация папок для работы с вложениями
-                        uForumAttachDir = new ArrayList();
-                        try {
-                            File attachDir = new File(FORUM_ATTACH_TABLES);
-                            if (attachDir.exists()) {
-                                String[] attach_cats = attachDir.list();
-                                for (int j = 0; j < attach_cats.length; j++) {
-                                    uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[j] + DS);
-                                }
+            } else if (uTables[i].equals("fr_fr") || uTables[i].equals("forum") || uTables[i].equals("forump")) {
+                if (!forumEmpty) {
+                    if (!NO_EMPTY) {
+                        emptySql.add(new TruncateQuery(PREF + "forum_cat"));
+                        emptySql.add(new TruncateQuery(PREF + "forums"));
+                        emptySql.add(new TruncateQuery(PREF + "themes"));
+                        emptySql.add(new TruncateQuery(PREF + "forum_attaches"));
+                        emptySql.add(new TruncateQuery(PREF + "posts"));
+                    }
+                    // Инициализация папок для работы с вложениями
+                    uForumAttachDir = new ArrayList();
+                    try {
+                        File attachDir = new File(FORUM_ATTACH_TABLES);
+                        if (attachDir.exists()) {
+                            String[] attach_cats = attachDir.list();
+                            for (int j = 0; j < attach_cats.length; j++) {
+                                uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[j] + DS);
+                            }
                                 File outputForumDir = new File( "files" + DS + "forum" );
                                 if (outputForumDir.exists()) {
                                     if (!outputForumDir.isDirectory()) {
@@ -1354,16 +1354,16 @@ public class Converter {
                                 System.out.println( "WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported." );
                             }
                         } catch (Exception e) {}
-                        forumEmpty = true;
+                    forumEmpty = true;
+                }
+            } else if (uTables[i].equals("ld_ld") || uTables[i].equals("loads")) {
+                if (!loadsEmpty) {
+                    if (!NO_EMPTY) {
+                        emptySql.add(new TruncateQuery(PREF + "loads_sections"));
+                        emptySql.add(new TruncateQuery(PREF + "loads_add_fields"));
+                        emptySql.add(new TruncateQuery(PREF + "loads"));
+                        emptySql.add(new TruncateQuery(PREF + "loads_add_content"));
                     }
-                } else if (uTables[i].equals("ld_ld") || uTables[i].equals("loads")) {
-                    if (!loadsEmpty) {
-                        if (!NO_EMPTY) {
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "loads_sections`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "loads_add_fields`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "loads`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "loads_add_content`;" );
-                        }
                         if (VERSION <= 3) { // Старше 1.2 beta
                             emptySql.add( "INSERT INTO `" + PREF + "loads_add_fields`"
                                         + " (`id`, `type`, `name`,`label`,`size`,`params`) VALUES"
@@ -1384,16 +1384,16 @@ public class Converter {
                                 }
                             }
                         } catch (Exception e) {}
-                        loadsEmpty = true;
+                    loadsEmpty = true;
+                }
+            } else if (uTables[i].equals("pu_pu") || uTables[i].equals("publ")) {
+                if (!publEmpty) {
+                    if (!NO_EMPTY) {
+                        emptySql.add(new TruncateQuery(PREF + "stat_sections"));
+                        emptySql.add(new TruncateQuery(PREF + "stat_add_fields"));
+                        emptySql.add(new TruncateQuery(PREF + "stat"));
+                        emptySql.add(new TruncateQuery(PREF + "stat_add_content"));
                     }
-                } else if (uTables[i].equals("pu_pu") || uTables[i].equals("publ")) {
-                    if (!publEmpty) {
-                        if (!NO_EMPTY) {
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "stat_sections`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "stat_add_fields`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "stat`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "stat_add_content`;" );
-                        }
                         emptySql.add( "INSERT INTO `" + PREF + "stat_add_fields`"
                                     + " (`id`, `type`, `name`,`label`,`size`,`params`) VALUES"
                                     + " ('1', 'text', '', 'Ссылка на источник материала', '255', 'a:0:{}');" );
@@ -1401,12 +1401,12 @@ public class Converter {
                             // Инициализация папок для работы с вложениями
                             uStatAttachDir = new ArrayList();
                             try {
-                                File attachDir = new File(PUBL_ATTACH_TABLES);
-                                if (attachDir.exists()) {
-                                    String[] attach_cats = attachDir.list();
-                                    for (int j = 0; j < attach_cats.length; j++) {
-                                        uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[j] + DS);
-                                    }
+                            File attachDir = new File(PUBL_ATTACH_TABLES);
+                            if (attachDir.exists()) {
+                                String[] attach_cats = attachDir.list();
+                                for (int j = 0; j < attach_cats.length; j++) {
+                                    uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[j] + DS);
+                                }
                                     File outputForumDir = new File( "files" + DS + "stat" );
                                     if (outputForumDir.exists()) {
                                         if (!outputForumDir.isDirectory()) {
@@ -1432,22 +1432,22 @@ public class Converter {
                            uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")) {
                     if (!newsEmpty) {
                         if (!NO_EMPTY) {
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "news`;" );
-                            emptySql.add( "TRUNCATE TABLE `" + PREF + "news_sections`;" );
-                        }
-                        if (VERSION > 2) { // 1.1.9 и новее
-                            // Инициализация папок для работы с вложениями
-                            uNewsAttachDir = new ArrayList();
-                            uBlogAttachDir = new ArrayList();
-                            uFaqAttachDir = new ArrayList();
-                            try {
-                                File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                                if (newsAttachDir.exists()) {
-                                    String[] attach_cats = newsAttachDir.list();
-                                    for (int j = 0; j < attach_cats.length; j++) {
-                                        uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
-                                    }
-                                } else {
+                        emptySql.add(new TruncateQuery(PREF + "news"));
+                        emptySql.add(new TruncateQuery(PREF + "news_sections"));
+                    }
+                    if (VERSION > 2) { // 1.1.9 и новее
+                        // Инициализация папок для работы с вложениями
+                        uNewsAttachDir = new ArrayList();
+                        uBlogAttachDir = new ArrayList();
+                        uFaqAttachDir = new ArrayList();
+                        try {
+                            File newsAttachDir = new File(NEWS_ATTACH_TABLES);
+                            if (newsAttachDir.exists()) {
+                                String[] attach_cats = newsAttachDir.list();
+                                for (int j = 0; j < attach_cats.length; j++) {
+                                    uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
+                                }
+                            } else {
                                     System.out.println( "WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported." );
                                 }
                                 File blogAttachDir = new File(BLOG_ATTACH_TABLES);
@@ -1489,10 +1489,10 @@ public class Converter {
                                 }
                             } catch (Exception e) {}
                         }
-                        newsEmpty = true;
-                    }
-                    if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
-                        if (!addNews) {
+                    newsEmpty = true;
+                }
+                if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
+                    if (!addNews) {
                             emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
                                         + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
                                         + " ('1', '0', 'Новости'" + (VERSION > 3 ? "" : ", 'section'") + ");");
@@ -1520,15 +1520,15 @@ public class Converter {
                                         + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
                                         + " ('6', '3', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
                             addFAQ = true;
-                        }
-                    }
-                } else if (uTables[i].equals("comments")) {
-                    if (!NO_EMPTY) {
-                        emptySql.add( "TRUNCATE TABLE `" + PREF + "loads_comments`;" );
-                        emptySql.add( "TRUNCATE TABLE `" + PREF + "stat_comments`;" );
-                        emptySql.add( "TRUNCATE TABLE `" + PREF + "news_comments`;" );
                     }
                 }
+            } else if (uTables[i].equals("comments")) {
+                if (!NO_EMPTY) {
+                    emptySql.add(new TruncateQuery(PREF + "loads_comments"));
+                    emptySql.add(new TruncateQuery(PREF + "stat_comments"));
+                    emptySql.add(new TruncateQuery(PREF + "news_comments"));
+                }
+            }
             }
 
             try {

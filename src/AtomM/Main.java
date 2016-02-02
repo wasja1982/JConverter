@@ -38,12 +38,20 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Main {
+
     static int CURRENT_VERSION = 9;
 
     private static void createFile(String filename, ArrayList data) {
         try {
             OutputStreamWriter buf = new OutputStreamWriter ( new FileOutputStream ( filename ), "UTF-8" );
-            for (int i = 0; i < data.size(); i++) buf.write((String)data.get(i) + "\r\n");
+            for (int i = 0; i < data.size(); i++) {
+                Object item = data.get(i);
+                if (item == null) {
+                    continue;
+                }
+                String str = item instanceof String ? (String) item : item.toString();
+                buf.write(str + "\r\n");
+            }
             buf.flush();
             buf.close();
         }
