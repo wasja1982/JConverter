@@ -67,6 +67,7 @@ public class Converter {
 
     private TreeMap uUsers = null;
     private TreeMap uUsersMeta = null;
+    private TreeMap uThemes = null;
     private ArrayList uForumAttachDir = null;
     private ArrayList uNewsAttachDir = null;
     private ArrayList uBlogAttachDir = null;
@@ -575,6 +576,9 @@ public class Converter {
         if (VERSION > 0) {
             query.addItem(new QueryItem("description", addslashes(uRecord[9])));
         }
+        if (VERSION >= 10) { // AtomM 4 и новее
+            uThemes.put(uRecord[0], uRecord[1]);
+        }
         FpsData.add(query);
         return true;
     }
@@ -645,6 +649,9 @@ public class Converter {
         query.addItem(new QueryItem("id_author", id_author));
         query.addItem(new QueryItem("edittime", parseDate(uRecord[9])));
         query.addItem(new QueryItem("attaches", attach));
+        if (VERSION >= 10 && uThemes != null && uThemes.containsKey(uRecord[1])) { // AtomM 4 и новее
+            query.addItem(new QueryItem("id_forum", (String)uThemes.get(uRecord[1])));
+        }
         FpsData.add(query);
         return true;
     }
@@ -706,7 +713,7 @@ public class Converter {
         } catch (Exception e) {
             section_id = "0";
         }
-        InsertQuery query = new InsertQuery(PREF + "loads_sections");
+        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "loads_categories" : "loads_sections"));
         query.addItem(new QueryItem("id", uRecord[0]));
         query.addItem(new QueryItem("title", addslashes(uRecord[5])));
         query.addItem(new QueryItem("announce", addslashes(uRecord[6])));
@@ -749,7 +756,7 @@ public class Converter {
         } catch (Exception e) {
             id = 3 + mode;
         }
-        InsertQuery query = new InsertQuery(PREF + "news_sections");
+        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
         query.addItem(new QueryItem("id", id));
         query.addItem(new QueryItem("title", addslashes(uRecord[3])));
         query.addItem(new QueryItem("announce", addslashes(uRecord[4])));
@@ -781,7 +788,7 @@ public class Converter {
         } catch (Exception e) {
             section_id = "0";
         }
-        InsertQuery query = new InsertQuery(PREF + "stat_sections");
+        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "stat_categories" : "stat_sections"));
         query.addItem(new QueryItem("id", uRecord[0]));
         query.addItem(new QueryItem("title", addslashes(uRecord[5])));
         query.addItem(new QueryItem("view_on_home", "1"));
@@ -1137,11 +1144,15 @@ public class Converter {
             query.addItem(new QueryItem("section_id", uRecord[1]));
         }
         if (uRecord[22] != null && !uRecord[22].isEmpty()) {
-            InsertQuery query_add = new InsertQuery(PREF + "stat_add_content");
-            query_add.addItem(new QueryItem("field_id", "1"));
-            query_add.addItem(new QueryItem("entity_id", uRecord[0]));
-            query_add.addItem(new QueryItem("content", uRecord[19]));
-            FpsData.add(query_add);
+            if (VERSION < 10) { // Старше AtomM 4
+                InsertQuery query_add = new InsertQuery(PREF + "stat_add_content");
+                query_add.addItem(new QueryItem("field_id", "1"));
+                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
+                query_add.addItem(new QueryItem("content", uRecord[19]));
+                FpsData.add(query_add);
+            } else { // AtomM 4 и новее
+                query.addItem(new QueryItem("add_field_1", uRecord[19]));
+            }
         }
         FpsData.add(query);
         return true;
@@ -1202,6 +1213,9 @@ public class Converter {
         }
         if (VERSION >= 9) { // 2.5 RC1 и новее
             query.addItem(new QueryItem("premoder", "confirmed"));
+        }
+        if (VERSION >= 10) { // AtomM 4 и новее
+            query.addItem(new QueryItem("parent_id", uRecord[13] != null && !uRecord[13].isEmpty() ? uRecord[13] : "0"));
         }
         FpsData.add(query);
         return true;
@@ -1354,6 +1368,9 @@ public class Converter {
     public ArrayList getSQL(String[] uTables) {
         ArrayList FpsData = new ArrayList();
         ArrayList emptySql = new ArrayList();
+        if (VERSION >= 10) { // AtomM 4 и новее
+            uThemes = new TreeMap();
+        }
         boolean forumEmpty = false;
         boolean loadsEmpty = false;
         boolean publEmpty = false;
@@ -1429,10 +1446,12 @@ public class Converter {
             } else if (uTables[i].equals("ld_ld") || uTables[i].equals("loads")) {
                 if (!loadsEmpty) {
                     if (!NO_EMPTY) {
-                        emptySql.add(new TruncateQuery(PREF + "loads_sections"));
-                        emptySql.add(new TruncateQuery(PREF + "loads_add_fields"));
+                        emptySql.add(new TruncateQuery(PREF + (VERSION >= 10 ? "loads_categories" : "loads_sections")));
+                        if (VERSION < 10) { // Старше AtomM 4
+                            emptySql.add(new TruncateQuery(PREF + "loads_add_fields"));
+                            emptySql.add(new TruncateQuery(PREF + "loads_add_content"));
+                        }
                         emptySql.add(new TruncateQuery(PREF + "loads"));
-                        emptySql.add(new TruncateQuery(PREF + "loads_add_content"));
                     }
                     if (VERSION <= 3) { // Старше 1.2 beta
                         InsertQuery query = new InsertQuery(PREF + "loads_add_fields");
@@ -1465,18 +1484,28 @@ public class Converter {
             } else if (uTables[i].equals("pu_pu") || uTables[i].equals("publ")) {
                 if (!publEmpty) {
                     if (!NO_EMPTY) {
-                        emptySql.add(new TruncateQuery(PREF + "stat_sections"));
-                        emptySql.add(new TruncateQuery(PREF + "stat_add_fields"));
+                        emptySql.add(new TruncateQuery(PREF + (VERSION >= 10 ? "stat_categories" : "stat_sections")));
+                        if (VERSION < 10) { // Старше AtomM 4
+                            emptySql.add(new TruncateQuery(PREF + "stat_add_fields"));
+                            emptySql.add(new TruncateQuery(PREF + "stat_add_content"));
+                        } else {
+                            emptySql.add(new TruncateQuery(PREF + "add_fields"));
+                        }
                         emptySql.add(new TruncateQuery(PREF + "stat"));
-                        emptySql.add(new TruncateQuery(PREF + "stat_add_content"));
                     }
-                    InsertQuery query = new InsertQuery(PREF + "stat_add_fields");
+                    InsertQuery query = new InsertQuery(PREF + "add_fields");
                     query.addItem(new QueryItem("id", "1"));
                     query.addItem(new QueryItem("type", "text"));
-                    query.addItem(new QueryItem("name", ""));
+                    query.addItem(new QueryItem("name", "link"));
                     query.addItem(new QueryItem("label", "Ссылка на источник материала"));
                     query.addItem(new QueryItem("size", "255"));
                     query.addItem(new QueryItem("params", "a:0:{}"));
+                    if (VERSION < 10) { // Старше AtomM 4
+                        query.setTable(PREF + "stat_add_fields");
+                    } else {
+                        query.addItem(new QueryItem("field_id", "1"));
+                        query.addItem(new QueryItem("module", "stat"));
+                    }
                     emptySql.add(query);
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
@@ -1515,7 +1544,7 @@ public class Converter {
                 if (!newsEmpty) {
                     if (!NO_EMPTY) {
                         emptySql.add(new TruncateQuery(PREF + "news"));
-                        emptySql.add(new TruncateQuery(PREF + "news_sections"));
+                        emptySql.add(new TruncateQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections")));
                     }
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
@@ -1576,7 +1605,7 @@ public class Converter {
                 }
                 if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
                     if (!addNews) {
-                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "1"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
                         query.addItem(new QueryItem("title", "Новости"));
@@ -1584,7 +1613,7 @@ public class Converter {
                             query.addItem(new QueryItem("class", "section"));
                         }
                         emptySql.add(query);
-                        query = new InsertQuery(PREF + "news_sections");
+                        query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "4"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1"));
                         query.addItem(new QueryItem("title", "Без категории"));
@@ -1596,7 +1625,7 @@ public class Converter {
                     }
                 } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
                     if (!addBlog) {
-                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "2"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
                         query.addItem(new QueryItem("title", "Блоги"));
@@ -1604,7 +1633,7 @@ public class Converter {
                             query.addItem(new QueryItem("class", "section"));
                         }
                         emptySql.add(query);
-                        query = new InsertQuery(PREF + "news_sections");
+                        query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "5"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2"));
                         query.addItem(new QueryItem("title", "Без категории"));
@@ -1616,7 +1645,7 @@ public class Converter {
                     }
                 } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
                     if (!addFAQ) {
-                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "3"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
                         query.addItem(new QueryItem("title", "FAQ"));
@@ -1624,7 +1653,7 @@ public class Converter {
                             query.addItem(new QueryItem("class", "section"));
                         }
                         emptySql.add(query);
-                        query = new InsertQuery(PREF + "news_sections");
+                        query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
                         query.addItem(new QueryItem("id", "6"));
                         query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3"));
                         query.addItem(new QueryItem("title", "Без категории"));
@@ -1654,9 +1683,8 @@ public class Converter {
                     } else {
                         line_int += line;
                     }
-                    if (uTables[i].equals("loads") || (VERSION < 3
-                            && // Старше 1.1.9
-                            (uTables[i].equals("publ") || uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")))) {
+                    if (uTables[i].equals("loads") || (VERSION < 3 // Старше 1.1.9
+                            && (uTables[i].equals("publ") || uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")))) {
                         line_int = line_int.replace("<!--IMG", "<!--I");
                     }
 

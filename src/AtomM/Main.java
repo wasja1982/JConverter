@@ -1,35 +1,3 @@
-/*
--path "path"   - путь к папке бекапа
--pref pref     - префикс БД
--pass password - пароль пользователю с ID = 1
-
--users         - включить обработку пользователей
--forum         - включить обработку форума
--loads         - включить обработку файлового архива
--publ          - включить обработку статей
--news          - включить обработку новостей, блогов и FAQ
--comments      - включить обработку комментариев
-
--split         - запись SQL-запросов в отдельные файлы
-
--wa            - разрешить загрузку аватаров из сети Internet
-
--noempty       - отключить генерацию очистки таблиц
--noimage       - отключить конвертацию изображений в форуме (с версии 0.3.5 - в форуме, статьях, новостях, блогах и FAQ)
--smile         - конвертировать смайлы
--nofix         - отключить разбор ошибочных тегов (ускоряет обработку)
-
- -v0           - режим совместимости с Fapos 0.9.93
- -v1           - режим совместимости с Fapos 1.0/1.1
- -v2           - режим совместимости с Fapos 1.1.8 beta
- -v3           - режим совместимости с Fapos 1.1.9
- -v4           - режим совместимости с Fapos 1.2 beta
- -v5           - режим совместимости с Fapos 1.3 RC
- -v6           - режим совместимости с Fapos 2.1 RC7
- -v7           - режим совместимости с Fapos 2.2 RC1
- -v8           - режим совместимости с Fapos 2.4 RC5
- -v9           - режим совместимости с AtomX 2.5 RC1 (по умолчанию)
- */
 package AtomM;
 
 import java.io.FileOutputStream;
@@ -38,7 +6,7 @@ import java.util.ArrayList;
 
 public class Main {
 
-    static int CURRENT_VERSION = 9;
+    static int CURRENT_VERSION = 10;
 
     private static void createFile(String filename, ArrayList data) {
         try {
@@ -59,7 +27,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println("JConvertor v0.3.6");
+        System.out.println("JConvertor v0.4");
         String path = ".";
         String pref = "";
         String password = null;
