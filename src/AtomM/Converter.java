@@ -28,7 +28,9 @@ import javax.imageio.ImageIO;
 import org.xml.sax.SAXParseException;
 
 public class Converter {
+
     private class uBlock {
+
         public int pos = 0;
         public int type = -1;
 
@@ -74,8 +76,8 @@ public class Converter {
     public Converter(String DUMP) {
         if (DUMP != null) {
             DUMP = DUMP.replace("\\", DS).replace("/", DS);
-            if (DUMP.length() > 0 && DUMP.lastIndexOf(DS) == DUMP.length()-1) {
-                DUMP = DUMP.substring(0, DUMP.length()-1);
+            if (DUMP.length() > 0 && DUMP.lastIndexOf(DS) == DUMP.length() - 1) {
+                DUMP = DUMP.substring(0, DUMP.length() - 1);
             }
         }
         this.DUMP = DUMP + DS;
@@ -88,9 +90,9 @@ public class Converter {
         AVATAR_TABLES = this.DUMP + "avatar" + DS;
         LOADS_TABLES = this.DUMP + "_ld" + DS;
     }
-    
+
     public Converter(String DUMP, String PREF) {
-        this( DUMP );
+        this(DUMP);
         this.PREF = PREF;
     }
 
@@ -138,7 +140,7 @@ public class Converter {
     private String loadsName(String name, String date) {
         String parse = "00000000000000";
         int pos = name.lastIndexOf('.');
-        String ext = (pos >= 0) ? name.substring( pos ) : "";
+        String ext = (pos >= 0) ? name.substring(pos) : "";
         if (date != null && !date.isEmpty() && !date.equals("0")) {
             try {
                 parse = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(Long.parseLong(date) * 1000));
@@ -149,17 +151,17 @@ public class Converter {
         return String.format("%s-%s%s", getMD5(name), parse, ext);
     }
 
-    private boolean copyFile( String filename, String new_filename ) {
-        File file = new File( filename );
+    private boolean copyFile(String filename, String new_filename) {
+        File file = new File(filename);
         if (file.exists()) {
             try {
-                File new_file = new File( new_filename );
-                FileChannel ic = new FileInputStream( file ).getChannel();
-                FileChannel oc = new FileOutputStream( new_file ).getChannel();
+                File new_file = new File(new_filename);
+                FileChannel ic = new FileInputStream(file).getChannel();
+                FileChannel oc = new FileOutputStream(new_file).getChannel();
                 ic.transferTo(0, ic.size(), oc);
                 ic.close();
                 oc.close();
-                new_file.setLastModified( file.lastModified() );
+                new_file.setLastModified(file.lastModified());
                 return true;
             } catch (Exception e) {
                 return false;
@@ -185,42 +187,54 @@ public class Converter {
             XMLReader xr = XMLReaderFactory.createXMLReader();
             xr.setContentHandler(parser);
             xr.setErrorHandler(parser);
-            xr.parse(new InputSource(new StringReader( "<html>" + parse + "</html>" )));
+            xr.parse(new InputSource(new StringReader("<html>" + parse + "</html>")));
             parse = parser.text;
-        } catch (Exception e){
+        } catch (Exception e) {
             if (!NO_FIX && (e instanceof SAXParseException)) {
                 int line = 1;
                 int linestart = -6;
                 for (int i = 0; i < parse.length(); i++) {
-                    if (line == ((SAXParseException)e).getLineNumber()) {
+                    if (line == ((SAXParseException) e).getLineNumber()) {
                         try {
-                            int pos = linestart + ((SAXParseException)e).getColumnNumber() - 1;
+                            int pos = linestart + ((SAXParseException) e).getColumnNumber() - 1;
                             if (pos >= 0) {
                                 int symbol = -1;
                                 int tag = -1;
                                 for (int j = pos; j >= 0; j--) {
                                     if (j < parse.length()) {
-                                        if (parse.charAt(j) == '<' && tag < 0) tag = j;
-                                        if (parse.charAt(j) == '&' && symbol < 0) symbol = j;
-                                        if (tag >= 0 && symbol >= 0) break;
+                                        if (parse.charAt(j) == '<' && tag < 0) {
+                                            tag = j;
+                                        }
+                                        if (parse.charAt(j) == '&' && symbol < 0) {
+                                            symbol = j;
+                                        }
+                                        if (tag >= 0 && symbol >= 0) {
+                                            break;
+                                        }
                                     }
                                 }
                                 // Сброс накопленных DIV
                                 int start = 0;
-                                if (tag > start) start = tag;
-                                if (symbol > start) start = symbol;
+                                if (tag > start) {
+                                    start = tag;
+                                }
+                                if (symbol > start) {
+                                    start = symbol;
+                                }
                                 int start_search = start;
                                 String p = parse.toUpperCase();
                                 while (parser.div != null && !parser.div.empty()) {
-                                    int end_div = p.indexOf( "</DIV>", start );
+                                    int end_div = p.indexOf("</DIV>", start);
                                     if (end_div >= start_search) {
-                                        int start_div = p.lastIndexOf( "<DIV>", end_div );
-                                        int start_div2 = p.lastIndexOf( "<DIV ", end_div );
-                                        if (start_div2 >= start_search && ((start_div >= start_search && start_div2 > start_div) || start_div < start_search)) start_div = start_div2;
+                                        int start_div = p.lastIndexOf("<DIV>", end_div);
+                                        int start_div2 = p.lastIndexOf("<DIV ", end_div);
+                                        if (start_div2 >= start_search && ((start_div >= start_search && start_div2 > start_div) || start_div < start_search)) {
+                                            start_div = start_div2;
+                                        }
                                         if (start_div < start_search) {
                                             // Замена
-                                            String r = parse.substring( 0, end_div );
-                                            Integer align = (Integer)parser.div.pop();
+                                            String r = parse.substring(0, end_div);
+                                            Integer align = (Integer) parser.div.pop();
                                             if (align != null) {
                                                 if (align == 0) {
                                                     r += "[/right]";
@@ -230,13 +244,13 @@ public class Converter {
                                                     r += "[/center]";
                                                 }
                                             }
-                                            r += parse.substring( end_div + 6 );
+                                            r += parse.substring(end_div + 6);
                                             parse = r;
                                             p = parse.toUpperCase();
                                             start = end_div + 1;
                                         } else {
                                             // Пропуск пары
-                                            String r = p.substring( 0, start_div );
+                                            String r = p.substring(0, start_div);
                                             r += "_";
                                             r += p.substring(start_div + 1, end_div);
                                             r += "_";
@@ -245,7 +259,7 @@ public class Converter {
                                         }
                                     } else {
                                         // Добавление в хвост
-                                        Integer align = (Integer)parser.div.pop();
+                                        Integer align = (Integer) parser.div.pop();
                                         if (align != null) {
                                             if (align == 0) {
                                                 parse += "[/right]";
@@ -262,15 +276,17 @@ public class Converter {
                                 start = start_search;
                                 p = parse.toUpperCase();
                                 while (parser.span != null && !parser.span.empty()) {
-                                    int end_span = p.indexOf( "</SPAN>", start );
+                                    int end_span = p.indexOf("</SPAN>", start);
                                     if (end_span >= start_search) {
-                                        int start_span = p.lastIndexOf( "<SPAN>", end_span );
-                                        int start_span2 = p.lastIndexOf( "<SPAN ", end_span );
-                                        if (start_span2 >= start_search && ((start_span >= start_search && start_span2 > start_span) || start_span < start_search)) start_span = start_span2;
+                                        int start_span = p.lastIndexOf("<SPAN>", end_span);
+                                        int start_span2 = p.lastIndexOf("<SPAN ", end_span);
+                                        if (start_span2 >= start_search && ((start_span >= start_search && start_span2 > start_span) || start_span < start_search)) {
+                                            start_span = start_span2;
+                                        }
                                         if (start_span < start_search) {
                                             // Замена
-                                            String r = parse.substring( 0, end_span );
-                                            Integer style = (Integer)parser.span.pop();
+                                            String r = parse.substring(0, end_span);
+                                            Integer style = (Integer) parser.span.pop();
                                             if (style != null) {
                                                 if (style == 0) {
                                                     r += "[/color]";
@@ -278,13 +294,13 @@ public class Converter {
                                                     r += "[/size]";
                                                 }
                                             }
-                                            r += parse.substring( end_span + 7 );
+                                            r += parse.substring(end_span + 7);
                                             parse = r;
                                             p = parse.toUpperCase();
                                             start = end_span + 1;
                                         } else {
                                             // Пропуск пары
-                                            String r = p.substring( 0, start_span );
+                                            String r = p.substring(0, start_span);
                                             r += "_";
                                             r += p.substring(start_span + 1, end_span);
                                             r += "_";
@@ -293,7 +309,7 @@ public class Converter {
                                         }
                                     } else {
                                         // Добавление в хвост
-                                        Integer style = (Integer)parser.span.pop();
+                                        Integer style = (Integer) parser.span.pop();
                                         if (style != null) {
                                             if (style == 0) {
                                                 parse += "[/color]";
@@ -308,18 +324,24 @@ public class Converter {
                                 if (tag >= 0 || symbol >= 0) {
                                     String substring = "";
                                     if (tag > symbol) {
-                                        if (parse.charAt( tag ) == '<') {
+                                        if (parse.charAt(tag) == '<') {
                                             substring = "&lt;";
-                                            if (tag < parse.length() - 1) substring += parse.substring( tag + 1 );
-                                        } else if (tag < parse.length()) substring += parse.substring( tag );
+                                            if (tag < parse.length() - 1) {
+                                                substring += parse.substring(tag + 1);
+                                            }
+                                        } else if (tag < parse.length()) {
+                                            substring += parse.substring(tag);
+                                        }
                                     } else {
                                         substring = "&amp;";
-                                        if (symbol < parse.length() - 1) substring += parse.substring(symbol + 1);
+                                        if (symbol < parse.length() - 1) {
+                                            substring += parse.substring(symbol + 1);
+                                        }
                                     }
-                                    parse = parser.text + toBB( substring );
+                                    parse = parser.text + toBB(substring);
                                 }
                             }
-                        } catch (Exception ee){
+                        } catch (Exception ee) {
                             //
                             ee.printStackTrace();
                         } finally {
@@ -338,27 +360,27 @@ public class Converter {
 
     private String HTMLtoBB(String html) {
         String parse = html;
-        while (parse.contains( "  " )) {
+        while (parse.contains("  ")) {
             parse = parse.replace("  ", " ");
         }
-        parse = parse.replaceAll( "<(?i)b>", "[b]" );
-        parse = parse.replaceAll( "</(?i)b>", "[/b]" );
-        parse = parse.replaceAll( "<(?i)strong>", "[b]" );
-        parse = parse.replaceAll( "</(?i)strong>", "[/b]" );
-        parse = parse.replaceAll( "<(?i)i>", "[i]" );
-        parse = parse.replaceAll( "</(?i)i>", "[/i]" );
-        parse = parse.replaceAll( "<(?i)em>", "[i]" );
-        parse = parse.replaceAll( "</(?i)em>", "[/i]" );
-        parse = parse.replaceAll( "<(?i)u>", "[u]" );
-        parse = parse.replaceAll( "</(?i)u>", "[/u]" );
-        parse = parse.replaceAll( "<(?i)s>", "[s]" );
-        parse = parse.replaceAll( "</(?i)s>", "[/s]" );
-        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)</(?i)p>(\\s*)", "<br />" );
-        parse = parse.replaceAll( "(\\s*)<(?i)p>(\\s*)", "<br />" );
-        parse = parse.replaceAll( "(\\s*)</(?i)p>(\\s*)", "<br />" );
-        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "<br />" );
-        parse = parse.replaceAll( "<(?i)li>", "[*]" );
-        parse = parse.replaceAll( "</(?i)li>", "" );
+        parse = parse.replaceAll("<(?i)b>", "[b]");
+        parse = parse.replaceAll("</(?i)b>", "[/b]");
+        parse = parse.replaceAll("<(?i)strong>", "[b]");
+        parse = parse.replaceAll("</(?i)strong>", "[/b]");
+        parse = parse.replaceAll("<(?i)i>", "[i]");
+        parse = parse.replaceAll("</(?i)i>", "[/i]");
+        parse = parse.replaceAll("<(?i)em>", "[i]");
+        parse = parse.replaceAll("</(?i)em>", "[/i]");
+        parse = parse.replaceAll("<(?i)u>", "[u]");
+        parse = parse.replaceAll("</(?i)u>", "[/u]");
+        parse = parse.replaceAll("<(?i)s>", "[s]");
+        parse = parse.replaceAll("</(?i)s>", "[/s]");
+        parse = parse.replaceAll("(\\s*)<(?i)p>(\\s*)</(?i)p>(\\s*)", "<br />");
+        parse = parse.replaceAll("(\\s*)<(?i)p>(\\s*)", "<br />");
+        parse = parse.replaceAll("(\\s*)</(?i)p>(\\s*)", "<br />");
+        parse = parse.replaceAll("<(?i)br(\\s*)(/?)>", "<br />");
+        parse = parse.replaceAll("<(?i)li>", "[*]");
+        parse = parse.replaceAll("</(?i)li>", "");
 
         parse = parse.replace("&nbsp;", " ");
         parse = parse.replace("&copy;", "©");
@@ -377,8 +399,10 @@ public class Converter {
         // Замена служебных символов, которые могут испортить парсинг
         for (byte i = 0; i < 32; i++) {
             // Пропуск переноса строки
-            if (i == 10 || i == 13) continue;
-            Character c = (char)i;
+            if (i == 10 || i == 13) {
+                continue;
+            }
+            Character c = (char) i;
             if (parse.contains(c.toString())) {
                 parse = parse.replace(c.toString(), "&#" + Byte.toString(i) + ";");
             }
@@ -386,13 +410,16 @@ public class Converter {
 
         if (!NO_IMAGE) {
             int i = 1;
-            while (parse.contains( "<!--IMG" ) && parse.contains( "-->" ) && i <= 100) {
-                String str = String.format( "<!--IMG%d-->", i );
-                while (parse.contains( str )) {
-                    int start = parse.indexOf( str );
-                    int end = parse.indexOf( str, start + 1 );
-                    if (start >= 0 && end <= start) parse = parse.replace( str, "" );
-                    else parse = parse.substring(0, start) + String.format("{IMAGE%d}", i) + parse.substring(end + str.length());
+            while (parse.contains("<!--IMG") && parse.contains("-->") && i <= 100) {
+                String str = String.format("<!--IMG%d-->", i);
+                while (parse.contains(str)) {
+                    int start = parse.indexOf(str);
+                    int end = parse.indexOf(str, start + 1);
+                    if (start >= 0 && end <= start) {
+                        parse = parse.replace(str, "");
+                    } else {
+                        parse = parse.substring(0, start) + String.format("{IMAGE%d}", i) + parse.substring(end + str.length());
+                    }
                 }
                 i++;
             }
@@ -402,15 +429,17 @@ public class Converter {
             next = parse.indexOf("<img ", next);
             if (next >= 0) {
                 int img_close = parse.indexOf(">", next);
-                if (img_close > 0 && img_close + 1 <= parse.length() && !parse.substring(img_close-1, img_close+1).equals("/>")) {
+                if (img_close > 0 && img_close + 1 <= parse.length() && !parse.substring(img_close - 1, img_close + 1).equals("/>")) {
                     parse = parse.substring(0, img_close) + "/>" + parse.substring(img_close + 1);
                     next = img_close;
                 }
             }
-            if (next >= 0) next++;
+            if (next >= 0) {
+                next++;
+            }
         } while (next >= 0 && next < parse.length());
-        String[] uBlockCodes = { "<!--uzquote-->", "<!--/uzquote-->", // [quote]Цитата из сообщения[/quote]
-                                 "<!--uzcode-->", "<!--/uzcode-->", // [code]Код программы[/code]
+        String[] uBlockCodes = {"<!--uzquote-->", "<!--/uzquote-->", // [quote]Цитата из сообщения[/quote]
+            "<!--uzcode-->", "<!--/uzcode-->", // [code]Код программы[/code]
             "<!--BBhide-->", "<!--/BBhide-->", // [hide]Any text goes here...[/hide]
             "<!--uSpoiler-->", "<!--/uSpoiler-->", // [spoiler]Any text goes here...[/spoiler]
             "<!--BBvideo-->", "<!--/BBvideo-->", // [video]ссылка на страницу ютуб или рутуб[/video]
@@ -438,28 +467,38 @@ public class Converter {
             }
             next = min_pos + 1;
             if (min_type >= 0) {
-                if (min_type % 2 == 0) uBlocks.push(new uBlock(min_pos, min_type));
-                else if (uBlocks.size() > 0 && uBlocks.peek().type + 1 == min_type) {
+                if (min_type % 2 == 0) {
+                    uBlocks.push(new uBlock(min_pos, min_type));
+                } else if (uBlocks.size() > 0 && uBlocks.peek().type + 1 == min_type) {
                     String block = parse.substring(uBlocks.peek().pos + uBlockCodes[uBlocks.peek().type].length(), min_pos);
                     String name = "";
                     String text = "";
                     int find_type = (min_type - 1) / 2;
                     if (find_type == 0) { // Quote
-                        if (block.contains("<!--qn-->") && block.contains("<!--/qn-->"))
+                        if (block.contains("<!--qn-->") && block.contains("<!--/qn-->")) {
                             name = block.substring(block.indexOf("<!--qn-->") + 9, block.indexOf("<!--/qn-->"));
+                        }
                     }
-                    if (block.contains(uBlocksText[find_type][0]))
+                    if (block.contains(uBlocksText[find_type][0])) {
                         if (block.contains(uBlocksText[find_type][1])) {
                             if (find_type == 4 || find_type == 5) { // Video & Audio
                                 int pos = block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length();
                                 text = block.substring(pos, block.indexOf(uBlocksText[find_type][1], pos));
-                            } else text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length(), block.lastIndexOf(uBlocksText[find_type][1]));
-                        } else
+                            } else {
+                                text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length(), block.lastIndexOf(uBlocksText[find_type][1]));
+                            }
+                        } else {
                             text = block.substring(block.indexOf(uBlocksText[find_type][0]) + uBlocksText[find_type][0].length());
-                    
-                    if (find_type != 1) text = toBB(text); // Code
+                        }
+                    }
+
+                    if (find_type != 1) {
+                        text = toBB(text); // Code
+                    }
                     block = "[" + uBlocksBB[find_type];
-                    if (name != null & !name.isEmpty()) block += "=\"" + name + "\"";
+                    if (name != null & !name.isEmpty()) {
+                        block += "=\"" + name + "\"";
+                    }
                     block += "]" + text + "[/" + uBlocksBB[find_type] + "]";
                     parse = parse.substring(0, uBlocks.peek().pos) + block + parse.substring(min_pos + uBlockCodes[min_type].length());
                     next = uBlocks.peek().pos + block.length();
@@ -477,7 +516,7 @@ public class Converter {
         while (start >= 0 && end >= 0 && end > start) {
             try {
                 int symb = Integer.parseInt(parse.substring(start + 2, end));
-                Character c = (char)symb;
+                Character c = (char) symb;
                 parse = parse.replace(parse.substring(start, end + 1), c.toString());
                 start = parse.indexOf("&#", start);
                 end = parse.indexOf(";", start);
@@ -492,7 +531,7 @@ public class Converter {
         parse = parse.replace("&apos;", "'");
         parse = parse.replace("&lt;", "<");
         parse = parse.replace("&gt;", ">");
-        parse = parse.replaceAll( "<(?i)br(\\s*)(/?)>", "\r\n" );
+        parse = parse.replaceAll("<(?i)br(\\s*)(/?)>", "\r\n");
         return parse;
     }
 
@@ -1306,21 +1345,23 @@ public class Converter {
     }
 
     public boolean initUsers() {
-        System.out.println( "Load \"ugen.txt\"..." );
+        System.out.println("Load \"ugen.txt\"...");
         String filename = DUMP_TABLES + "ugen.txt";
         if (!new File(filename).exists()) {
-            System.out.println( "ERROR: File \"ugen.txt\" not found." );
+            System.out.println("ERROR: File \"ugen.txt\" not found.");
             return false;
         }
         uUsersMeta = new TreeMap();
         uUsers = new TreeMap();
         try {
-            BufferedReader br = new BufferedReader ( new InputStreamReader ( new FileInputStream ( filename ), "UTF-8" ) );
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filename), "UTF-8"));
             String line = null;
-            while ( ( line = br.readLine () ) != null ) {
+            while ((line = br.readLine()) != null) {
                 line = line.replace("\\|", "&#124;");
-                String [] uUsersData = line.split( "\\|" );
-                if (uUsersData.length < 2 || uUsersData[1].isEmpty()) continue;
+                String[] uUsersData = line.split("\\|");
+                if (uUsersData.length < 2 || uUsersData[1].isEmpty()) {
+                    continue;
+                }
                 for (int i = 0; i < uUsersData.length; i++) {
                     if (uUsersData[i].contains("&#124;")) {
                         uUsersData[i] = uUsersData[i].replace("&#124;", "|");
@@ -1329,10 +1370,10 @@ public class Converter {
                 uUsersMeta.put(uUsersData[1], uUsersData);
                 uUsers.put(uUsersData[1], uUsersData[0]);
             }
+        } catch (Exception e) {
         }
-        catch (Exception e) {}
         if (uUsersMeta.size() == 0) {
-            System.out.println( "ERROR: File \"ugen.txt\" is empty." );
+            System.out.println("ERROR: File \"ugen.txt\" is empty.");
             return false;
         }
         return true;
@@ -1349,31 +1390,31 @@ public class Converter {
         boolean addBlog = false;
         boolean addFAQ = false;
         for (int i = 0; i < uTables.length; i++) {
-            System.out.println( "Load \"" + uTables[i] + ".txt\"..." );
+            System.out.println("Load \"" + uTables[i] + ".txt\"...");
             String uDumpFile = DUMP_TABLES + uTables[i] + ".txt";
             if (!new File(uDumpFile).exists()) {
-                System.out.println( "WARNING: File \"" + uTables[i] + ".txt\" not found." );
+                System.out.println("WARNING: File \"" + uTables[i] + ".txt\" not found.");
                 continue;
-            } else {
-                if (uTables[i].equals("users")) {
+            } else if (uTables[i].equals("users")) {
                 if (!NO_EMPTY) {
                     emptySql.add(new TruncateQuery(PREF + "users"));
                 }
                 // Инициализация папки для работы с аватарами
                 try {
-                        File outputAvatarsDir = new File( "avatars" );
-                        if (outputAvatarsDir.exists()) {
-                            if (!outputAvatarsDir.isDirectory()) {
-                                System.out.println( "WARNING: Path \"avatars\" is not directory. Avatars not supported." );
-                            }
-                        } else {
-                            try {
-                                outputAvatarsDir.mkdirs();
-                            } catch (Exception e) {
-                                System.out.println( "WARNING: Path \"avatars\" can't created. Avatars not supported." );
-                            }
+                    File outputAvatarsDir = new File("avatars");
+                    if (outputAvatarsDir.exists()) {
+                        if (!outputAvatarsDir.isDirectory()) {
+                            System.out.println("WARNING: Path \"avatars\" is not directory. Avatars not supported.");
                         }
-                    } catch (Exception e) {}
+                    } else {
+                        try {
+                            outputAvatarsDir.mkdirs();
+                        } catch (Exception e) {
+                            System.out.println("WARNING: Path \"avatars\" can't created. Avatars not supported.");
+                        }
+                    }
+                } catch (Exception e) {
+                }
             } else if (uTables[i].equals("fr_fr") || uTables[i].equals("forum") || uTables[i].equals("forump")) {
                 if (!forumEmpty) {
                     if (!NO_EMPTY) {
@@ -1392,24 +1433,25 @@ public class Converter {
                             for (int j = 0; j < attach_cats.length; j++) {
                                 uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[j] + DS);
                             }
-                                File outputForumDir = new File( "files" + DS + "forum" );
-                                if (outputForumDir.exists()) {
-                                    if (!outputForumDir.isDirectory()) {
-                                        System.out.println( "WARNING: Path \"files" + DS + "forum\" is not directory. Attachments not supported." );
-                                        uForumAttachDir.clear();
-                                    }
-                                } else {
-                                    try {
-                                        outputForumDir.mkdirs();
-                                    } catch (Exception e) {
-                                        System.out.println( "WARNING: Path \"files" + DS + "forum\" can't created. Attachments not supported." );
-                                        uForumAttachDir.clear();
-                                    }
+                            File outputForumDir = new File("files" + DS + "forum");
+                            if (outputForumDir.exists()) {
+                                if (!outputForumDir.isDirectory()) {
+                                    System.out.println("WARNING: Path \"files" + DS + "forum\" is not directory. Attachments not supported.");
+                                    uForumAttachDir.clear();
                                 }
                             } else {
-                                System.out.println( "WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported." );
+                                try {
+                                    outputForumDir.mkdirs();
+                                } catch (Exception e) {
+                                    System.out.println("WARNING: Path \"files" + DS + "forum\" can't created. Attachments not supported.");
+                                    uForumAttachDir.clear();
+                                }
                             }
-                        } catch (Exception e) {}
+                        } else {
+                            System.out.println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                        }
+                    } catch (Exception e) {
+                    }
                     forumEmpty = true;
                 }
             } else if (uTables[i].equals("ld_ld") || uTables[i].equals("loads")) {
@@ -1430,21 +1472,22 @@ public class Converter {
                         query.addItem(new QueryItem("params", "a:0:{}"));
                         emptySql.add(query);
                     }
-                        // Инициализация папки для работы с файлами
-                        try {
-                            File outputForumDir = new File( "files" + DS + LOADS_OUT );
-                            if (outputForumDir.exists()) {
-                                if (!outputForumDir.isDirectory()) {
-                                    System.out.println( "WARNING: Path \"files" + DS + LOADS_OUT + "\" is not directory. Loads not supported." );
-                                }
-                            } else {
-                                try {
-                                    outputForumDir.mkdirs();
-                                } catch (Exception e) {
-                                    System.out.println( "WARNING: Path \"files" + DS + LOADS_OUT + "\" can't created. Loads not supported." );
-                                }
+                    // Инициализация папки для работы с файлами
+                    try {
+                        File outputForumDir = new File("files" + DS + LOADS_OUT);
+                        if (outputForumDir.exists()) {
+                            if (!outputForumDir.isDirectory()) {
+                                System.out.println("WARNING: Path \"files" + DS + LOADS_OUT + "\" is not directory. Loads not supported.");
                             }
-                        } catch (Exception e) {}
+                        } else {
+                            try {
+                                outputForumDir.mkdirs();
+                            } catch (Exception e) {
+                                System.out.println("WARNING: Path \"files" + DS + LOADS_OUT + "\" can't created. Loads not supported.");
+                            }
+                        }
+                    } catch (Exception e) {
+                    }
                     loadsEmpty = true;
                 }
             } else if (uTables[i].equals("pu_pu") || uTables[i].equals("publ")) {
@@ -1455,167 +1498,169 @@ public class Converter {
                         emptySql.add(new TruncateQuery(PREF + "stat"));
                         emptySql.add(new TruncateQuery(PREF + "stat_add_content"));
                     }
-                        InsertQuery query = new InsertQuery(PREF + "stat_add_fields");
-                        query.addItem(new QueryItem("id", "1"));
-                        query.addItem(new QueryItem("type", "text"));
-                        query.addItem(new QueryItem("name", ""));
-                        query.addItem(new QueryItem("label", "Ссылка на источник материала"));
-                        query.addItem(new QueryItem("size", "255"));
-                        query.addItem(new QueryItem("params", "a:0:{}"));
-                        emptySql.add(query);
-                        if (VERSION > 2) { // 1.1.9 и новее
-                            // Инициализация папок для работы с вложениями
-                            uStatAttachDir = new ArrayList();
-                            try {
+                    InsertQuery query = new InsertQuery(PREF + "stat_add_fields");
+                    query.addItem(new QueryItem("id", "1"));
+                    query.addItem(new QueryItem("type", "text"));
+                    query.addItem(new QueryItem("name", ""));
+                    query.addItem(new QueryItem("label", "Ссылка на источник материала"));
+                    query.addItem(new QueryItem("size", "255"));
+                    query.addItem(new QueryItem("params", "a:0:{}"));
+                    emptySql.add(query);
+                    if (VERSION > 2) { // 1.1.9 и новее
+                        // Инициализация папок для работы с вложениями
+                        uStatAttachDir = new ArrayList();
+                        try {
                             File attachDir = new File(PUBL_ATTACH_TABLES);
                             if (attachDir.exists()) {
                                 String[] attach_cats = attachDir.list();
                                 for (int j = 0; j < attach_cats.length; j++) {
                                     uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[j] + DS);
                                 }
-                                    File outputForumDir = new File( "files" + DS + "stat" );
-                                    if (outputForumDir.exists()) {
-                                        if (!outputForumDir.isDirectory()) {
-                                            System.out.println( "WARNING: Path \"files" + DS + "stat\" is not directory. Attachments not supported." );
-                                            uStatAttachDir.clear();
-                                        }
-                                    } else {
-                                        try {
-                                            outputForumDir.mkdirs();
-                                        } catch (Exception e) {
-                                            System.out.println( "WARNING: Path \"files" + DS + "stat\" can't created. Attachments not supported." );
-                                            uStatAttachDir.clear();
-                                        }
-                                    }
-                                } else {
-                                    System.out.println( "WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments not supported." );
-                                }
-                            } catch (Exception e) {}
-                        }
-                        publEmpty = true;
-                    }
-                } else if (uTables[i].equals("nw_nw") || uTables[i].equals("bl_bl") || uTables[i].equals("fq_fq") ||
-                           uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")) {
-                    if (!newsEmpty) {
-                        if (!NO_EMPTY) {
-                            emptySql.add(new TruncateQuery(PREF + "news"));
-                            emptySql.add(new TruncateQuery(PREF + "news_sections"));
-                        }
-                        if (VERSION > 2) { // 1.1.9 и новее
-                            // Инициализация папок для работы с вложениями
-                            uNewsAttachDir = new ArrayList();
-                            uBlogAttachDir = new ArrayList();
-                            uFaqAttachDir = new ArrayList();
-                            try {
-                                File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                                if (newsAttachDir.exists()) {
-                                    String[] attach_cats = newsAttachDir.list();
-                                    for (int j = 0; j < attach_cats.length; j++) {
-                                        uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
-                                    }
-                                } else {
-                                    System.out.println( "WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported." );
-                                }
-                                File blogAttachDir = new File(BLOG_ATTACH_TABLES);
-                                if (blogAttachDir.exists()) {
-                                    String[] attach_cats = blogAttachDir.list();
-                                    for (int j = 0; j < attach_cats.length; j++) {
-                                        uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[j] + DS);
-                                    }
-                                } else {
-                                    System.out.println( "WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments not supported." );
-                                }
-                                File faqAttachDir = new File(FAQ_ATTACH_TABLES);
-                                if (faqAttachDir.exists()) {
-                                    String[] attach_cats = faqAttachDir.list();
-                                    for (int j = 0; j < attach_cats.length; j++) {
-                                        uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[j] + DS);
-                                    }
-                                } else {
-                                    System.out.println( "WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments not supported." );
-                                }
-                                // Результирующая папка
-                                File outputForumDir = new File( "files" + DS + "news" );
+                                File outputForumDir = new File("files" + DS + "stat");
                                 if (outputForumDir.exists()) {
                                     if (!outputForumDir.isDirectory()) {
-                                        System.out.println( "WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported." );
-                                        uNewsAttachDir.clear();
-                                        uBlogAttachDir.clear();
-                                        uFaqAttachDir.clear();
+                                        System.out.println("WARNING: Path \"files" + DS + "stat\" is not directory. Attachments not supported.");
+                                        uStatAttachDir.clear();
                                     }
                                 } else {
                                     try {
                                         outputForumDir.mkdirs();
                                     } catch (Exception e) {
-                                        System.out.println( "WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported." );
-                                        uNewsAttachDir.clear();
-                                        uBlogAttachDir.clear();
-                                        uFaqAttachDir.clear();
+                                        System.out.println("WARNING: Path \"files" + DS + "stat\" can't created. Attachments not supported.");
+                                        uStatAttachDir.clear();
                                     }
                                 }
-                            } catch (Exception e) {}
+                            } else {
+                                System.out.println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                            }
+                        } catch (Exception e) {
                         }
-                        newsEmpty = true;
                     }
-                    if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
-                        if (!addNews) {
-                            InsertQuery query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "1"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                            query.addItem(new QueryItem("title", "Новости"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "section"));
+                    publEmpty = true;
+                }
+            } else if (uTables[i].equals("nw_nw") || uTables[i].equals("bl_bl") || uTables[i].equals("fq_fq")
+                    || uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")) {
+                if (!newsEmpty) {
+                    if (!NO_EMPTY) {
+                        emptySql.add(new TruncateQuery(PREF + "news"));
+                        emptySql.add(new TruncateQuery(PREF + "news_sections"));
+                    }
+                    if (VERSION > 2) { // 1.1.9 и новее
+                        // Инициализация папок для работы с вложениями
+                        uNewsAttachDir = new ArrayList();
+                        uBlogAttachDir = new ArrayList();
+                        uFaqAttachDir = new ArrayList();
+                        try {
+                            File newsAttachDir = new File(NEWS_ATTACH_TABLES);
+                            if (newsAttachDir.exists()) {
+                                String[] attach_cats = newsAttachDir.list();
+                                for (int j = 0; j < attach_cats.length; j++) {
+                                    uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
+                                }
+                            } else {
+                                System.out.println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported.");
                             }
-                            emptySql.add(query);
-                            query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "4"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1"));
-                            query.addItem(new QueryItem("title", "Без категории"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "category"));
+                            File blogAttachDir = new File(BLOG_ATTACH_TABLES);
+                            if (blogAttachDir.exists()) {
+                                String[] attach_cats = blogAttachDir.list();
+                                for (int j = 0; j < attach_cats.length; j++) {
+                                    uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[j] + DS);
+                                }
+                            } else {
+                                System.out.println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments not supported.");
                             }
-                            emptySql.add(query);
-                            addNews = true;
+                            File faqAttachDir = new File(FAQ_ATTACH_TABLES);
+                            if (faqAttachDir.exists()) {
+                                String[] attach_cats = faqAttachDir.list();
+                                for (int j = 0; j < attach_cats.length; j++) {
+                                    uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[j] + DS);
+                                }
+                            } else {
+                                System.out.println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                            }
+                            // Результирующая папка
+                            File outputForumDir = new File("files" + DS + "news");
+                            if (outputForumDir.exists()) {
+                                if (!outputForumDir.isDirectory()) {
+                                    System.out.println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
+                                    uNewsAttachDir.clear();
+                                    uBlogAttachDir.clear();
+                                    uFaqAttachDir.clear();
+                                }
+                            } else {
+                                try {
+                                    outputForumDir.mkdirs();
+                                } catch (Exception e) {
+                                    System.out.println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
+                                    uNewsAttachDir.clear();
+                                    uBlogAttachDir.clear();
+                                    uFaqAttachDir.clear();
+                                }
+                            }
+                        } catch (Exception e) {
                         }
-                    } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
-                        if (!addBlog) {
-                            InsertQuery query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "2"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                            query.addItem(new QueryItem("title", "Блоги"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "section"));
-                            }
-                            emptySql.add(query);
-                            query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "5"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2"));
-                            query.addItem(new QueryItem("title", "Без категории"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "category"));
-                            }
-                            emptySql.add(query);
-                            addBlog = true;
+                    }
+                    newsEmpty = true;
+                }
+                if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
+                    if (!addNews) {
+                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "1"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                        query.addItem(new QueryItem("title", "Новости"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "section"));
                         }
-                    } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
-                        if (!addFAQ) {
-                            InsertQuery query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "3"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                            query.addItem(new QueryItem("title", "FAQ"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "section"));
-                            }
-                            emptySql.add(query);
-                            query = new InsertQuery(PREF + "news_sections");
-                            query.addItem(new QueryItem("id", "6"));
-                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3"));
-                            query.addItem(new QueryItem("title", "Без категории"));
-                            if (VERSION <= 3) {
-                                query.addItem(new QueryItem("class", "category"));
-                            }
-                            emptySql.add(query);
-                            addFAQ = true;
+                        emptySql.add(query);
+                        query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "4"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1"));
+                        query.addItem(new QueryItem("title", "Без категории"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "category"));
+                        }
+                        emptySql.add(query);
+                        addNews = true;
+                    }
+                } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
+                    if (!addBlog) {
+                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "2"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                        query.addItem(new QueryItem("title", "Блоги"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "section"));
+                        }
+                        emptySql.add(query);
+                        query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "5"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2"));
+                        query.addItem(new QueryItem("title", "Без категории"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "category"));
+                        }
+                        emptySql.add(query);
+                        addBlog = true;
+                    }
+                } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
+                    if (!addFAQ) {
+                        InsertQuery query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "3"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                        query.addItem(new QueryItem("title", "FAQ"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "section"));
+                        }
+                        emptySql.add(query);
+                        query = new InsertQuery(PREF + "news_sections");
+                        query.addItem(new QueryItem("id", "6"));
+                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3"));
+                        query.addItem(new QueryItem("title", "Без категории"));
+                        if (VERSION <= 3) {
+                            query.addItem(new QueryItem("class", "category"));
+                        }
+                        emptySql.add(query);
+                        addFAQ = true;
                     }
                 }
             } else if (uTables[i].equals("comments")) {
@@ -1625,52 +1670,69 @@ public class Converter {
                     emptySql.add(new TruncateQuery(PREF + "news_comments"));
                 }
             }
-            }
 
             try {
-                BufferedReader br = new BufferedReader ( new InputStreamReader ( new FileInputStream ( uDumpFile ), "UTF-8" ) );
+                BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(uDumpFile), "UTF-8"));
                 String line = null;
                 String line_int = "";
-                while ( ( line = br.readLine () ) != null ) {
-                    if ( line.lastIndexOf("\\") == line.length() - 1 ) {
+                while ((line = br.readLine()) != null) {
+                    if (line.lastIndexOf("\\") == line.length() - 1) {
                         line_int += line.substring(0, line.length() - 1) + "<BR />";
                         continue;
                     } else {
                         line_int += line;
                     }
-                    if (uTables[i].equals("loads") || (VERSION < 3 && // Старше 1.1.9
-                       (uTables[i].equals("publ") || uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")))) {
+                    if (uTables[i].equals("loads") || (VERSION < 3
+                            && // Старше 1.1.9
+                            (uTables[i].equals("publ") || uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")))) {
                         line_int = line_int.replace("<!--IMG", "<!--I");
                     }
 
                     line_int = line_int.replace("\\|", "&#124;");
-                    String [] uRecord = line_int.split( "\\|" );
-                    if (uRecord.length < 2) continue;
+                    String[] uRecord = line_int.split("\\|");
+                    if (uRecord.length < 2) {
+                        continue;
+                    }
                     for (int j = 0; j < uRecord.length; j++) {
                         if (uRecord[j].contains("&#124;")) {
                             uRecord[j] = uRecord[j].replace("&#124;", "|");
                         }
                     }
-                    if (uTables[i].equals("users")) parse_users(FpsData, uRecord);
-                    else if (uTables[i].equals("fr_fr")) parse_fr_fr(FpsData, uRecord);
-                    else if (uTables[i].equals("forum")) parse_forum(FpsData, uRecord);
-                    else if (uTables[i].equals("forump"))parse_forump(FpsData, uRecord);
-                    else if (uTables[i].equals("ld_ld")) parse_ld_ld(FpsData, uRecord);
-                    else if (uTables[i].equals("loads")) parse_loads(FpsData, uRecord);
-                    else if (uTables[i].equals("pu_pu")) parse_pu_pu(FpsData, uRecord);
-                    else if (uTables[i].equals("publ")) parse_publ(FpsData, uRecord);
-                    else if (uTables[i].equals("nw_nw")) parse_nw_nw(FpsData, uRecord, 1);
-                    else if (uTables[i].equals("news")) parse_news(FpsData, uRecord, 1);
-                    else if (uTables[i].equals("bl_bl")) parse_nw_nw(FpsData, uRecord, 2);
-                    else if (uTables[i].equals("blog")) parse_news(FpsData, uRecord, 2);
-                    else if (uTables[i].equals("fq_fq")) parse_nw_nw(FpsData, uRecord, 3);
-                    else if (uTables[i].equals("faq")) parse_faq(FpsData, uRecord);
-                    else if (uTables[i].equals("comments")) parse_comments(FpsData, uRecord);
+                    if (uTables[i].equals("users")) {
+                        parse_users(FpsData, uRecord);
+                    } else if (uTables[i].equals("fr_fr")) {
+                        parse_fr_fr(FpsData, uRecord);
+                    } else if (uTables[i].equals("forum")) {
+                        parse_forum(FpsData, uRecord);
+                    } else if (uTables[i].equals("forump")) {
+                        parse_forump(FpsData, uRecord);
+                    } else if (uTables[i].equals("ld_ld")) {
+                        parse_ld_ld(FpsData, uRecord);
+                    } else if (uTables[i].equals("loads")) {
+                        parse_loads(FpsData, uRecord);
+                    } else if (uTables[i].equals("pu_pu")) {
+                        parse_pu_pu(FpsData, uRecord);
+                    } else if (uTables[i].equals("publ")) {
+                        parse_publ(FpsData, uRecord);
+                    } else if (uTables[i].equals("nw_nw")) {
+                        parse_nw_nw(FpsData, uRecord, 1);
+                    } else if (uTables[i].equals("news")) {
+                        parse_news(FpsData, uRecord, 1);
+                    } else if (uTables[i].equals("bl_bl")) {
+                        parse_nw_nw(FpsData, uRecord, 2);
+                    } else if (uTables[i].equals("blog")) {
+                        parse_news(FpsData, uRecord, 2);
+                    } else if (uTables[i].equals("fq_fq")) {
+                        parse_nw_nw(FpsData, uRecord, 3);
+                    } else if (uTables[i].equals("faq")) {
+                        parse_faq(FpsData, uRecord);
+                    } else if (uTables[i].equals("comments")) {
+                        parse_comments(FpsData, uRecord);
+                    }
                     line_int = "";
                 }
-            }
-            catch (Exception e) {
-                System.out.println( e.getMessage() );
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
             }
             FpsData.add("\r\n -- ---------------------------------- -- \r\n");
         }

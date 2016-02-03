@@ -29,8 +29,7 @@
  -v7           - режим совместимости с Fapos 2.2 RC1
  -v8           - режим совместимости с Fapos 2.4 RC5
  -v9           - режим совместимости с AtomX 2.5 RC1 (по умолчанию)
-*/
-
+ */
 package AtomM;
 
 import java.io.FileOutputStream;
@@ -43,7 +42,7 @@ public class Main {
 
     private static void createFile(String filename, ArrayList data) {
         try {
-            OutputStreamWriter buf = new OutputStreamWriter ( new FileOutputStream ( filename ), "UTF-8" );
+            OutputStreamWriter buf = new OutputStreamWriter(new FileOutputStream(filename), "UTF-8");
             for (int i = 0; i < data.size(); i++) {
                 Object item = data.get(i);
                 if (item == null) {
@@ -54,19 +53,18 @@ public class Main {
             }
             buf.flush();
             buf.close();
-        }
-        catch (Exception e) {
-            System.out.println( "File \"" + filename + "\" not saved (" + e.getMessage() + ")." );
+        } catch (Exception e) {
+            System.out.println("File \"" + filename + "\" not saved (" + e.getMessage() + ").");
         }
     }
 
     public static void main(String[] args) {
-        System.out.println( "JConvertor v0.3.6" );
+        System.out.println("JConvertor v0.3.6");
         String path = ".";
         String pref = "";
         String password = null;
         boolean parseAll = true;
-        boolean[] parse = new boolean[] {false, false, false, false, false};
+        boolean[] parse = new boolean[]{false, false, false, false, false};
         boolean sqlSplit = false;
         boolean useWebAvatars = false;
         boolean noEmpty = false;
@@ -113,9 +111,9 @@ public class Main {
             } else if (args[i].equalsIgnoreCase("-nofix")) {
                 noFix = true;
             } else if (args[i].toLowerCase().startsWith("-v") && args[i].length() > 2) {
-                String ver = args[i].substring( 2 );
+                String ver = args[i].substring(2);
                 try {
-                    version = Integer.parseInt( ver );
+                    version = Integer.parseInt(ver);
                 } catch (NumberFormatException ex) {
                     version = CURRENT_VERSION;
                 }
@@ -125,14 +123,14 @@ public class Main {
             }
         }
 
-        String[][] uTables = new String[][] {{"users"},
-                                             {"fr_fr", "forum", "forump"},
-                                             {"ld_ld", "loads"},
-                                             {"pu_pu", "publ"},
-                                             {"nw_nw", "news", "bl_bl", "blog", "fq_fq", "faq"},
-                                             {"comments"}};
+        String[][] uTables = new String[][]{{"users"},
+        {"fr_fr", "forum", "forump"},
+        {"ld_ld", "loads"},
+        {"pu_pu", "publ"},
+        {"nw_nw", "news", "bl_bl", "blog", "fq_fq", "faq"},
+        {"comments"}};
 
-        String[] uFiles = new String[] {"users", "forum", "loads", "stat", "news", "comments"};
+        String[] uFiles = new String[]{"users", "forum", "loads", "stat", "news", "comments"};
 
         Converter conv = new Converter(path, pref);
 
@@ -143,19 +141,21 @@ public class Main {
         conv.PARSE_SMILE = parseSmile;
         conv.NO_FIX = noFix;
         conv.VERSION = version;
-        
+
         if (conv != null && conv.initUsers()) {
             ArrayList FpsData = null;
             if (!sqlSplit) {
                 FpsData = new ArrayList();
             }
             for (int i = 0; i < uFiles.length; i++) {
-                if (!parseAll && !parse[i]) continue;
+                if (!parseAll && !parse[i]) {
+                    continue;
+                }
                 ArrayList temp = conv.getSQL(uTables[i]);
                 if (temp != null) {
                     if (sqlSplit) {
                         String filename = "atomx_" + uFiles[i] + ".sql";
-                        System.out.println( "Save \"" + filename + "\"..." );
+                        System.out.println("Save \"" + filename + "\"...");
                         createFile(filename, temp);
                     } else {
                         FpsData.addAll(temp);
@@ -163,7 +163,7 @@ public class Main {
                 }
             }
             if (FpsData != null) {
-                System.out.println( "Save \"atomx.sql\"..." );
+                System.out.println("Save \"atomx.sql\"...");
                 createFile("atomx.sql", FpsData);
             }
         }
