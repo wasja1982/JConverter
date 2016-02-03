@@ -3,7 +3,7 @@ package AtomM;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Query {
+public class Query implements Cloneable {
 
     private String table;
     private List<QueryItem> items;
@@ -39,5 +39,17 @@ public class Query {
 
     public QueryItem getItem(int number) {
         return items != null ? items.get(number) : null;
+    }
+
+    public void clearItems() {
+        this.items.clear();
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        Query result = (Query) super.clone();
+        result.setTable(this.table);
+        result.getItems().addAll(this.items);
+        return result;
     }
 }

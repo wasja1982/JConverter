@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Stack;
 import java.util.TreeMap;
 import org.xml.sax.InputSource;
@@ -498,50 +499,57 @@ public class Converter {
     /**
      * forum.txt
      */
-    private String parse_forum(String[] uRecord) {
+    private boolean parse_forum(List FpsData, String[] uRecord) {
         if (uRecord.length < 13) {
-            return null;
+            return false;
         }
         String id_author = "0";
         try {
             Object ob = uUsers.get(uRecord[10]);
-            id_author = ((ob != null) && !((String)ob).isEmpty()) ? (String)ob : "0";
+            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
         } catch (Exception e) {
             id_author = "0";
         }
         String id_last_author = "0";
         try {
             Object ob = uUsers.get(uRecord[12]);
-            id_last_author = ((ob != null) && !((String)ob).isEmpty()) ? (String)ob : "0";
+            id_last_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
         } catch (Exception e) {
             id_last_author = "0";
         }
-        String output = "INSERT INTO `" + PREF + "themes`"
-            + " (`id`, `id_forum`, `important`, `id_last_author`, `last_post`, `locked`, `posts`, `views`, `title`, `id_author`";
-        if (VERSION > 0) output += ", `description`";
-        output += String.format(") VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'",
-            uRecord[0], uRecord[1], uRecord[3], id_last_author, parseDate(uRecord[4]), uRecord[5], uRecord[6], uRecord[7], addslashes(uRecord[8]), id_author);
-        if (VERSION > 0) output += String.format(", '%s'", addslashes(uRecord[9]));
-        output += ");";
-        return output;
+        InsertQuery query = new InsertQuery(PREF + "themes");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("id_forum", uRecord[1]));
+        query.addItem(new QueryItem("important", uRecord[3]));
+        query.addItem(new QueryItem("id_last_author", id_last_author));
+        query.addItem(new QueryItem("last_post", parseDate(uRecord[4])));
+        query.addItem(new QueryItem("locked", uRecord[5]));
+        query.addItem(new QueryItem("posts", uRecord[6]));
+        query.addItem(new QueryItem("views", uRecord[7]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[8])));
+        query.addItem(new QueryItem("id_author", id_author));
+        if (VERSION > 0) {
+            query.addItem(new QueryItem("description", addslashes(uRecord[9])));
+        }
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * forump.txt
      */
-    private String parse_forump(String[] uRecord) {
+    private boolean parse_forump(List FpsData, String[] uRecord) {
         if (uRecord.length < 11) {
-            return null;
+            return false;
         }
         String id_author = "0";
         try {
             Object ob = uUsers.get(uRecord[6]);
-            id_author = ((ob != null) && !((String)ob).isEmpty()) ? (String)ob : "0";
+            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
         } catch (Exception e) {
             id_author = "0";
         }
         String attach = "0";
-        String output_a = "";
         if (uRecord.length > 10 && uRecord[10] != null && !uRecord[10].isEmpty()) {
             String[] attaches = uRecord[10].split("`");
             attach = (attaches.length > 0) ? "1" : "0";
@@ -549,17 +557,17 @@ public class Converter {
                 for (int i = 0; i < attaches.length; i++) {
                     if (attaches[i].length() > 0) {
                         int pos = attaches[i].lastIndexOf('.');
-                        String ext = (pos >= 0) ? attaches[i].substring( pos ) : "";
-                        String is_image = (ext.equalsIgnoreCase( ".png" ) || ext.equalsIgnoreCase( ".jpg" ) ||
-                                           ext.equalsIgnoreCase( ".gif" ) || ext.equalsIgnoreCase( ".jpeg" )) ? "1" : "0";
-                        String new_filename = attachesName(uRecord[0], Integer.toString( i + 1 ), uRecord[2], ext);
+                        String ext = (pos >= 0) ? attaches[i].substring(pos) : "";
+                        String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                                || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
+                        String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[2], ext);
                         boolean exist = false;
                         for (int j = 0; j < uForumAttachDir.size(); j++) {
                             String filename = "";
-                            if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase( "s" )) {
-                                filename = ((String)uForumAttachDir.get(j)) + attaches[i].substring(1);
+                            if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
+                                filename = ((String) uForumAttachDir.get(j)) + attaches[i].substring(1);
                             } else {
-                                filename = ((String)uForumAttachDir.get(j)) + attaches[i];
+                                filename = ((String) uForumAttachDir.get(j)) + attaches[i];
                             }
                             if (copyFile(filename, "files" + DS + "forum" + DS + new_filename)) {
                                 exist = true;
@@ -567,43 +575,51 @@ public class Converter {
                             }
                         }
                         if (exist) {
-                            output_a += String.format("INSERT INTO `" + PREF + "forum_attaches`"
-                                     + " (`post_id`, `theme_id`, `user_id`, `attach_number`, `filename`, `size`, `date`, `is_image`) VALUES"
-                                     + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                     uRecord[0], uRecord[1], id_author, Integer.toString(i + 1), new_filename,
-                                     Long.toString(new File("files" + DS + "forum" + DS + new_filename).length()),
-                                     parseDate(uRecord[2]), is_image);
+                            InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
+                            query_add.addItem(new QueryItem("post_id", uRecord[0]));
+                            query_add.addItem(new QueryItem("theme_id", uRecord[1]));
+                            query_add.addItem(new QueryItem("user_id", id_author));
+                            query_add.addItem(new QueryItem("attach_number", i + 1));
+                            query_add.addItem(new QueryItem("filename", new_filename));
+                            query_add.addItem(new QueryItem("size", new File("files" + DS + "forum" + DS + new_filename).length()));
+                            query_add.addItem(new QueryItem("date", parseDate(uRecord[2])));
+                            query_add.addItem(new QueryItem("is_image", is_image));
+                            FpsData.add(query_add);
                         } else {
-                            System.out.println( "WARNING: Attachment \"" + attaches[i] + "\" not found." );
+                            System.out.println("WARNING: Attachment \"" + attaches[i] + "\" not found.");
                         }
                     }
                 }
             }
         }
 
-        String output = String.format("INSERT INTO `" + PREF + "posts`"
-                + " (`id`, `id_theme`, `time`, `message`, `id_author`, `edittime`, `attaches`) VALUES"
-                + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                uRecord[0], uRecord[1], parseDate(uRecord[2]), addslashes(uRecord[4]), id_author, parseDate(uRecord[9]), attach);
-        return output_a + output;
+        InsertQuery query = new InsertQuery(PREF + "posts");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("id_theme", uRecord[1]));
+        query.addItem(new QueryItem("time", parseDate(uRecord[2])));
+        query.addItem(new QueryItem("message", addslashes(uRecord[4])));
+        query.addItem(new QueryItem("id_author", id_author));
+        query.addItem(new QueryItem("edittime", parseDate(uRecord[9])));
+        query.addItem(new QueryItem("attaches", attach));
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * fr_fr.txt
      */
-    private String parse_fr_fr(String[] uRecord) {
+    private boolean parse_fr_fr(List FpsData, String[] uRecord) {
         if (uRecord.length < 6) {
-            return null;
+            return false;
         }
-        String output;
+        InsertQuery query = new InsertQuery();
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
         if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
-            output = String.format("INSERT INTO `" + PREF + "forum_cat`"
-                    + " (`id`, `title`) VALUES"
-                    + " ('%s', '%s');",
-                    uRecord[0], addslashes(uRecord[5]));
+            query.setTable(PREF + "forum_cat");
         } else {
             if (uRecord.length < 17) {
-                return null;
+                return false;
             }
             String last_theme_id = "";
             try {
@@ -623,20 +639,23 @@ public class Converter {
             } catch (Exception e) {
                 posts = "0";
             }
-            output = String.format("INSERT INTO `" + PREF + "forums`"
-                    + " (`id`, `in_cat`, `title`, `last_theme_id`, `themes`, `posts`, `description`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], uRecord[1], addslashes(uRecord[5]), last_theme_id, themes, posts, addslashes(uRecord[6]));
+            query.setTable(PREF + "forums");
+            query.addItem(new QueryItem("in_cat", uRecord[1]));
+            query.addItem(new QueryItem("last_theme_id", last_theme_id));
+            query.addItem(new QueryItem("themes", themes));
+            query.addItem(new QueryItem("posts", posts));
+            query.addItem(new QueryItem("description", addslashes(uRecord[6])));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * ld_ld.txt
      */
-    private String parse_ld_ld(String[] uRecord) {
+    private boolean parse_ld_ld(List FpsData, String[] uRecord) {
         if (uRecord.length < 7) {
-            return null;
+            return false;
         }
         String section_id = "0";
         try {
@@ -644,20 +663,21 @@ public class Converter {
         } catch (Exception e) {
             section_id = "0";
         }
-        String output = null;
+        InsertQuery query = new InsertQuery(PREF + "loads_sections");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
+        query.addItem(new QueryItem("announce", addslashes(uRecord[6])));
+        query.addItem(new QueryItem("view_on_home", "0"));
         if (VERSION > 3) { // 1.2 beta и новее
-            output = String.format("INSERT INTO `" + PREF + "loads_sections`"
-                    + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
-                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                    + ") VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', ''"
-                + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
-                    + ");",
-                    uRecord[0], section_id, addslashes(uRecord[5]), addslashes(uRecord[6]), "0");
+            query.addItem(new QueryItem("parent_id", section_id));
+            query.addItem(new QueryItem("no_access", ""));
+            if (VERSION >= 8) { // 2.4 RC5 и новее
+                query.addItem(new QueryItem("path", (section_id.equals("0") ? "" : section_id + ".")));
+            }
         } else { // Старше 1.2 beta
             String class_sections = "category";
             try {
-                if ((uRecord[2] == null) || uRecord[2].isEmpty() || uRecord[2].equals( "0" )) {
+                if ((uRecord[2] == null) || uRecord[2].isEmpty() || uRecord[2].equals("0")) {
                     class_sections = "category";
                 } else {
                     section_id = "0";
@@ -666,53 +686,51 @@ public class Converter {
             } catch (Exception e) {
                 class_sections = "category";
             }
-
-            output = String.format("INSERT INTO `" + PREF + "loads_sections`"
-                    + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], section_id, addslashes(uRecord[5]), class_sections, addslashes(uRecord[6]), "0");
+            query.addItem(new QueryItem("section_id", section_id));
+            query.addItem(new QueryItem("class", class_sections));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * nw_nw.txt & bl_bl.txt & fq_fq.txt
      */
-    private String parse_nw_nw(String[] uRecord, int mode) {
+    private boolean parse_nw_nw(List FpsData, String[] uRecord, int mode) {
         if (uRecord.length < 5) {
-            return null;
+            return false;
         }
         int id = 3 + mode;
         try {
-            id = (Integer.parseInt( uRecord[0] ) + 1) * 3 + mode;
+            id = (Integer.parseInt(uRecord[0]) + 1) * 3 + mode;
         } catch (Exception e) {
             id = 3 + mode;
         }
-        String output = null;
+        InsertQuery query = new InsertQuery(PREF + "news_sections");
+        query.addItem(new QueryItem("id", id));
+        query.addItem(new QueryItem("title", addslashes(uRecord[3])));
+        query.addItem(new QueryItem("announce", addslashes(uRecord[4])));
+        query.addItem(new QueryItem("view_on_home", "1"));
         if (VERSION > 3) { // 1.2 beta и новее
-            output = String.format("INSERT INTO `" + PREF + "news_sections`"
-                    + " (`id`, `parent_id`, `title`, `announce`, `view_on_home`, `no_access`"
-                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                    + ") VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', ''"
-                    + (VERSION >= 8 ? ", '" + mode + ".'" : "") // 2.4 RC5 и новее
-                    + ");",
-                    id, mode, addslashes(uRecord[3]), addslashes(uRecord[4]), "1");
+            query.addItem(new QueryItem("parent_id", mode));
+            query.addItem(new QueryItem("no_access", ""));
+            if (VERSION >= 8) { // 2.4 RC5 и новее
+                query.addItem(new QueryItem("path", mode + "."));
+            }
         } else { // Старше 1.2 beta
-            output = String.format("INSERT INTO `" + PREF + "news_sections`"
-                    + " (`id`, `section_id`, `title`, `class`, `announce`, `view_on_home`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s');",
-                    id, mode, addslashes(uRecord[3]), "category", addslashes(uRecord[4]), "1");
+            query.addItem(new QueryItem("section_id", mode));
+            query.addItem(new QueryItem("class", "category"));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * pu_pu.txt
      */
-    private String parse_pu_pu(String[] uRecord) {
+    private boolean parse_pu_pu(List FpsData, String[] uRecord) {
         if (uRecord.length < 6) {
-            return null;
+            return false;
         }
         String section_id = "0";
         try {
@@ -720,20 +738,20 @@ public class Converter {
         } catch (Exception e) {
             section_id = "0";
         }
-        String output = null;
+        InsertQuery query = new InsertQuery(PREF + "stat_sections");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
+        query.addItem(new QueryItem("view_on_home", "1"));
         if (VERSION > 3) { // 1.2 beta и новее
-            output = String.format("INSERT INTO `" + PREF + "stat_sections`"
-                    + " (`id`, `parent_id`, `title`, `view_on_home`, `no_access`"
-                    + (VERSION >= 8 ? ", `path`" : "") // 2.4 RC5 и новее
-                    + ") VALUES"
-                    + " ('%s', '%s', '%s', '%s', ''"
-                + (VERSION >= 8 ? (section_id.equals( "0" ) ? ", ''" : ", '" + section_id + ".'") : "") // 2.4 RC5 и новее
-                + ");",
-                uRecord[0], section_id, addslashes(uRecord[5]), "1");
+            query.addItem(new QueryItem("parent_id", section_id));
+            query.addItem(new QueryItem("no_access", ""));
+            if (VERSION >= 8) { // 2.4 RC5 и новее
+                query.addItem(new QueryItem("path", (section_id.equals("0") ? "" : section_id + ".")));
+            }
         } else { // Старше 1.2 beta
             String class_sections = "category";
             try {
-                if ((uRecord[2] == null) || uRecord[2].isEmpty() || uRecord[2].equals( "0" )) {
+                if ((uRecord[2] == null) || uRecord[2].isEmpty() || uRecord[2].equals("0")) {
                     class_sections = "category";
                 } else {
                     section_id = "0";
@@ -742,29 +760,27 @@ public class Converter {
             } catch (Exception e) {
                 class_sections = "category";
             }
-
-            output = String.format("INSERT INTO `" + PREF + "stat_sections`"
-                    + " (`id`, `section_id`, `title`, `class`, `view_on_home`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], section_id, addslashes(uRecord[5]), class_sections, "1");
+            query.addItem(new QueryItem("section_id", section_id));
+            query.addItem(new QueryItem("class", class_sections));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * loads.txt
      */
-    private String parse_loads(String[] uRecord) {
+    private boolean parse_loads(List FpsData, String[] uRecord) {
         if (uRecord.length < 33) {
-            return null;
+            return false;
         }
         String download = "";
         if (uRecord[24] != null && !uRecord[24].isEmpty()) {
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
             download = loadsName(uRecord[24], uRecord[5]);
-            String path = ((Integer)(Integer.parseInt(uRecord[0]) / 100)).toString();
-            if (!copyFile( LOADS_TABLES + path + DS + filename, "files" + DS + LOADS_OUT + DS + download )) {
-                System.out.println( "WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found." );
+            String path = ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString();
+            if (!copyFile(LOADS_TABLES + path + DS + filename, "files" + DS + LOADS_OUT + DS + download)) {
+                System.out.println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
             }
         }
         String commented = "1";
@@ -782,70 +798,77 @@ public class Converter {
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[26]);
-            author_id = ((obj != null) && !((String)obj).isEmpty()) ? (String)obj : "0";
+            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
         } catch (Exception e) {
             author_id = "0";
         }
 
-        String output = null;
+        InsertQuery query = new InsertQuery(PREF + "loads");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[15])));
+        query.addItem(new QueryItem("main", addslashes(uRecord[32])));
+        query.addItem(new QueryItem("author_id", author_id));
+        query.addItem(new QueryItem("category_id", uRecord[2]));
+        query.addItem(new QueryItem("views", uRecord[13]));
+        query.addItem(new QueryItem("downloads", uRecord[14]));
+        query.addItem(new QueryItem("download", download));
+        query.addItem(new QueryItem("date", parseDate(uRecord[5])));
+        query.addItem(new QueryItem("comments", uRecord[8]));
+        query.addItem(new QueryItem("description", addslashes(uRecord[16])));
+        query.addItem(new QueryItem("sourse", uRecord[27]));
+        query.addItem(new QueryItem("sourse_email", uRecord[28]));
+        query.addItem(new QueryItem("sourse_site", uRecord[29]));
+        query.addItem(new QueryItem("commented", commented));
+        query.addItem(new QueryItem("available", available));
+        query.addItem(new QueryItem("view_on_home", "0"));
+        query.addItem(new QueryItem("on_home_top", on_home_top));
         if (VERSION > 3) { // 1.2 beta и новее
             long lsize = 0;
             try {
                 lsize = Long.parseLong(uRecord[23]);
-            } catch (NumberFormatException ex) {}
-            output = String.format("INSERT INTO `" + PREF + "loads`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `views`, `downloads`, `download`, `date`, `comments`,"
-                    + " `description`, `sourse`, `sourse_email`, `sourse_site`, `commented`,"
-                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                    + " `available`, `view_on_home`, `on_home_top`, `download_url`, `download_url_size`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                    + " '%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
-                    uRecord[13], uRecord[14], download, parseDate(uRecord[5]), uRecord[8],
-                    addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29], commented,
-                    available, "0", on_home_top, uRecord[22], lsize);
+            } catch (NumberFormatException ex) {
+            }
+            if (VERSION >= 7) { // 2.2 RC1 и новее
+                query.addItem(new QueryItem("premoder", "confirmed"));
+            }
+            query.addItem(new QueryItem("download_url", uRecord[22]));
+            query.addItem(new QueryItem("download_url_size", lsize));
         } else { // Старше 1.2 beta
-            output = String.format("INSERT INTO `" + PREF + "loads`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `section_id`, `views`, `downloads`, `download`, `date`,"
-                    + " `comments`, `description`, `sourse`, `sourse_email`, `sourse_site`,"
-                    + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], addslashes(uRecord[15]), addslashes(uRecord[32]), author_id, uRecord[2],
-                    uRecord[1], uRecord[13], uRecord[14], download, parseDate(uRecord[5]),
-                    uRecord[8], addslashes(uRecord[16]), uRecord[27], uRecord[28], uRecord[29],
-                    commented, available, "0", on_home_top);
+            query.addItem(new QueryItem("section_id", uRecord[1]));
             if (uRecord[22] != null && !uRecord[22].isEmpty()) {
-                output += String.format("INSERT INTO `" + PREF + "loads_add_content`"
-                        + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
-                        "1", uRecord[0], uRecord[22]);
+                InsertQuery query_add = new InsertQuery(PREF + "loads_add_content");
+                query_add.addItem(new QueryItem("field_id", "1"));
+                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
+                query_add.addItem(new QueryItem("content", uRecord[22]));
+                FpsData.add(query_add);
             }
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * news.txt & blog.txt
      */
-    private String parse_news(String[] uRecord, int mode) {
+    private boolean parse_news(List FpsData, String[] uRecord, int mode) {
         if (uRecord.length < 17) {
-            return null;
+            return false;
         }
         int id = 0;
         try {
-            id = (Integer.parseInt( uRecord[0] ) - 1) * 3 + mode;
+            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + mode;
         } catch (Exception e) {
-            return null;
+            return false;
         }
         int category_id = 3 + mode;
         try {
-            category_id = (Integer.parseInt( uRecord[1] ) + 1) * 3 + mode;
+            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + mode;
         } catch (Exception e) {
             category_id = 3 + mode;
         }
-        if (category_id == 0) category_id = 1;
+        if (category_id == 0) {
+            category_id = 1;
+        }
         String commented = "1";
         if (uRecord[7].equals("0")) {
             commented = "0";
@@ -861,11 +884,24 @@ public class Converter {
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[10]);
-            author_id = ((obj != null) && !((String)obj).isEmpty()) ? (String)obj : "0";
+            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
         } catch (Exception e) {
             author_id = "0";
         }
-        String output = "";
+        InsertQuery query = new InsertQuery(PREF + "news");
+        query.addItem(new QueryItem("id", id));
+        query.addItem(new QueryItem("title", addslashes(uRecord[11])));
+        query.addItem(new QueryItem("main", addslashes(uRecord[13])));
+        query.addItem(new QueryItem("author_id", author_id));
+        query.addItem(new QueryItem("category_id", category_id));
+        query.addItem(new QueryItem("views", uRecord[16]));
+        query.addItem(new QueryItem("date", parseDate(uRecord[8])));
+        query.addItem(new QueryItem("comments", uRecord[9]));
+        query.addItem(new QueryItem("description", addslashes(uRecord[12])));
+        query.addItem(new QueryItem("commented", commented));
+        query.addItem(new QueryItem("available", available));
+        query.addItem(new QueryItem("view_on_home", "1"));
+        query.addItem(new QueryItem("on_home_top", on_home_top));
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[15].split("\\|");
             if (files != null && files.length > 0) {
@@ -875,72 +911,60 @@ public class Converter {
                         ArrayList<String> attachDir = (mode == 1 ? uNewsAttachDir : (mode == 2 ? uBlogAttachDir : null));
                         if (attachDir != null && attachDir.size() > 0 && parts.length > 1) {
                             String ext = "." + parts[1];
-                            String is_image = (ext.equalsIgnoreCase( ".png" ) || ext.equalsIgnoreCase( ".jpg" ) ||
-                                               ext.equalsIgnoreCase( ".gif" ) || ext.equalsIgnoreCase( ".jpeg" )) ? "1" : "0";
+                            String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                                    || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
                             String new_filename = attachesName(Integer.toString(id), Integer.toString(i + 1), uRecord[8], ext);
                             boolean exist = false;
                             for (int j = 0; j < attachDir.size(); j++) {
-                                String filename = ((String)attachDir.get(j)) + parts[0] + ext;
+                                String filename = ((String) attachDir.get(j)) + parts[0] + ext;
                                 if (copyFile(filename, "files" + DS + "news" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
                             }
                             if (exist) {
-                                output += String.format("INSERT INTO `" + PREF + "news_attaches`"
-                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                        + " `date`, `is_image`) VALUES"
-                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                        id, author_id, Integer.toString(i + 1), new_filename,
-                                        Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
-                                        parseDate(uRecord[8]), is_image);
+                                InsertQuery query_add = new InsertQuery(PREF + "news_attaches");
+                                query_add.addItem(new QueryItem("entity_id", id));
+                                query_add.addItem(new QueryItem("user_id", author_id));
+                                query_add.addItem(new QueryItem("attach_number", i + 1));
+                                query_add.addItem(new QueryItem("filename", new_filename));
+                                query_add.addItem(new QueryItem("size", new File("files" + DS + "news" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("date", parseDate(uRecord[8])));
+                                query_add.addItem(new QueryItem("is_image", is_image));
+                                FpsData.add(query_add);
                             } else {
-                                System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
+                                System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
                             }
                         }
                     }
                 }
             }
-            output += String.format("INSERT INTO `" + PREF + "news`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `views`, `date`, `comments`, `description`, `commented`,"
-                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                    + " `available`, `view_on_home`, `on_home_top`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                    + " '%s', '%s', '%s');",
-                    id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
-                    uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]), commented,
-                    available, "1", on_home_top);
+            if (VERSION >= 7) { // 2.2 RC1 и новее
+                query.addItem(new QueryItem("premoder", "confirmed"));
+            }
         } else { // Старше 1.2 beta
-            output = String.format("INSERT INTO `" + PREF + "news`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `section_id`, `views`, `date`, `comments`, `description`,"
-                    + " `commented`, `available`, `view_on_home`, `on_home_top`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                    id, addslashes(uRecord[11]), addslashes(uRecord[13]), author_id, category_id,
-                    mode, uRecord[16], parseDate(uRecord[8]), uRecord[9], addslashes(uRecord[12]),
-                    commented, available, "1", on_home_top);
+            query.addItem(new QueryItem("section_id", mode));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * faq.txt
      */
-    private String parse_faq(String[] uRecord) {
+    private boolean parse_faq(List FpsData, String[] uRecord) {
         if (uRecord.length < 18) {
-            return null;
+            return false;
         }
         int id = 0;
         try {
-            id = (Integer.parseInt( uRecord[0] ) - 1) * 3 + 3;
+            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + 3;
         } catch (Exception e) {
-            return null;
+            return false;
         }
         int category_id = 6;
         try {
-            category_id = (Integer.parseInt( uRecord[1] ) + 1) * 3 + 3;
+            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + 3;
         } catch (Exception e) {
             category_id = 6;
         }
@@ -951,11 +975,22 @@ public class Converter {
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[13]);
-            author_id = ((obj != null) && !((String)obj).isEmpty()) ? (String)obj : "0";
+            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
         } catch (Exception e) {
             author_id = "0";
         }
-        String output = "";
+        InsertQuery query = new InsertQuery(PREF + "news");
+        query.addItem(new QueryItem("id", id));
+        query.addItem(new QueryItem("title", addslashes(uRecord[10])));
+        query.addItem(new QueryItem("main", addslashes(uRecord[12])));
+        query.addItem(new QueryItem("author_id", author_id));
+        query.addItem(new QueryItem("category_id", category_id));
+        query.addItem(new QueryItem("date", parseDate(uRecord[4])));
+        query.addItem(new QueryItem("description", addslashes(uRecord[11])));
+        query.addItem(new QueryItem("sourse", uRecord[14]));
+        query.addItem(new QueryItem("sourse_email", uRecord[15]));
+        query.addItem(new QueryItem("available", available));
+        query.addItem(new QueryItem("view_on_home", "1"));
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[17].split("\\|");
             if (files != null && files.length > 0) {
@@ -964,62 +999,50 @@ public class Converter {
                         String[] parts = files[i].split("`");
                         if (uFaqAttachDir != null && uFaqAttachDir.size() > 0 && parts.length > 1) {
                             String ext = "." + parts[1];
-                            String is_image = (ext.equalsIgnoreCase( ".png" ) || ext.equalsIgnoreCase( ".jpg" ) ||
-                                               ext.equalsIgnoreCase( ".gif" ) || ext.equalsIgnoreCase( ".jpeg" )) ? "1" : "0";
+                            String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                                    || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
                             String new_filename = attachesName(Integer.toString(id), Integer.toString(i + 1), uRecord[4], ext);
                             boolean exist = false;
                             for (int j = 0; j < uFaqAttachDir.size(); j++) {
-                                String filename = ((String)uFaqAttachDir.get(j)) + parts[0] + ext;
+                                String filename = ((String) uFaqAttachDir.get(j)) + parts[0] + ext;
                                 if (copyFile(filename, "files" + DS + "news" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
                             }
                             if (exist) {
-                                output += String.format("INSERT INTO `" + PREF + "news_attaches`"
-                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                        + " `date`, `is_image`) VALUES"
-                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                        id, author_id, Integer.toString(i + 1), new_filename,
-                                        Long.toString(new File("files" + DS + "news" + DS + new_filename).length()),
-                                        parseDate(uRecord[4]), is_image);
+                                InsertQuery query_add = new InsertQuery(PREF + "news_attaches");
+                                query_add.addItem(new QueryItem("entity_id", id));
+                                query_add.addItem(new QueryItem("user_id", author_id));
+                                query_add.addItem(new QueryItem("attach_number", i + 1));
+                                query_add.addItem(new QueryItem("filename", new_filename));
+                                query_add.addItem(new QueryItem("size", new File("files" + DS + "news" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("date", parseDate(uRecord[4])));
+                                query_add.addItem(new QueryItem("is_image", is_image));
+                                FpsData.add(query_add);
                             } else {
-                                System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
+                                System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
                             }
                         }
                     }
                 }
             }
-            output += String.format("INSERT INTO `" + PREF + "news`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `date`, `description`, `sourse`, `sourse_email`, `available`,"
-                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                    + " `view_on_home`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                    + " '%s');",
-                    id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
-                    parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15], available,
-                    "1");
+            if (VERSION >= 7) { // 2.2 RC1 и новее
+                query.addItem(new QueryItem("premoder", "confirmed"));
+            }
         } else { // Старше 1.2 beta
-            output = String.format("INSERT INTO `" + PREF + "news`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `section_id`, `date`, `description`, `sourse`, `sourse_email`,"
-                    + " `available`, `view_on_home`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                    id, addslashes(uRecord[10]), addslashes(uRecord[12]), author_id, category_id,
-                    "3", parseDate(uRecord[4]), addslashes(uRecord[11]), uRecord[14], uRecord[15],
-                    available, "1");
+            query.addItem(new QueryItem("section_id", "3"));
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * publ.txt
      */
-    private String parse_publ(String[] uRecord) {
+    private boolean parse_publ(List FpsData, String[] uRecord) {
         if (uRecord.length < 25) {
-            return null;
+            return false;
         }
         String commented = "1";
         if (uRecord[7].equals("0")) {
@@ -1036,11 +1059,27 @@ public class Converter {
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[15]);
-            author_id = ((obj != null) && !((String)obj).isEmpty()) ? (String)obj : "0";
+            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
         } catch (Exception e) {
             author_id = "0";
         }
-        String output = "";
+        InsertQuery query = new InsertQuery(PREF + "stat");
+        query.addItem(new QueryItem("id", uRecord[0]));
+        query.addItem(new QueryItem("title", addslashes(uRecord[13])));
+        query.addItem(new QueryItem("main", addslashes(uRecord[20])));
+        query.addItem(new QueryItem("author_id", author_id));
+        query.addItem(new QueryItem("category_id", uRecord[2]));
+        query.addItem(new QueryItem("views", uRecord[21]));
+        query.addItem(new QueryItem("date", parseDate(uRecord[5])));
+        query.addItem(new QueryItem("comments", uRecord[8]));
+        query.addItem(new QueryItem("description", addslashes(uRecord[14])));
+        query.addItem(new QueryItem("sourse", uRecord[16]));
+        query.addItem(new QueryItem("sourse_email", uRecord[17]));
+        query.addItem(new QueryItem("sourse_site", uRecord[18]));
+        query.addItem(new QueryItem("commented", commented));
+        query.addItem(new QueryItem("available", available));
+        query.addItem(new QueryItem("view_on_home", "1"));
+        query.addItem(new QueryItem("on_home_top", on_home_top));
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[24].split("\\|");
             if (files != null && files.length > 0) {
@@ -1049,88 +1088,78 @@ public class Converter {
                         String[] parts = files[i].split("`");
                         if (uStatAttachDir != null && uStatAttachDir.size() > 0 && parts.length > 1) {
                             String ext = "." + parts[1];
-                            String is_image = (ext.equalsIgnoreCase( ".png" ) || ext.equalsIgnoreCase( ".jpg" ) ||
-                                               ext.equalsIgnoreCase( ".gif" ) || ext.equalsIgnoreCase( ".jpeg" )) ? "1" : "0";
+                            String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                                    || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
                             String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[5], ext);
                             boolean exist = false;
                             for (int j = 0; j < uStatAttachDir.size(); j++) {
-                                String filename = ((String)uStatAttachDir.get(j)) + parts[0] + ext;
+                                String filename = ((String) uStatAttachDir.get(j)) + parts[0] + ext;
                                 if (copyFile(filename, "files" + DS + "stat" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
                             }
                             if (exist) {
-                                output += String.format("INSERT INTO `" + PREF + "stat_attaches`"
-                                        + " (`entity_id`, `user_id`, `attach_number`, `filename`, `size`,"
-                                        + " `date`, `is_image`) VALUES"
-                                        + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s');\r\n",
-                                        uRecord[0], author_id, Integer.toString(i + 1), new_filename,
-                                        Long.toString(new File("files" + DS + "stat" + DS + new_filename).length()),
-                                        parseDate(uRecord[5]), is_image);
+                                InsertQuery query_add = new InsertQuery(PREF + "stat_attaches");
+                                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
+                                query_add.addItem(new QueryItem("user_id", author_id));
+                                query_add.addItem(new QueryItem("attach_number", i + 1));
+                                query_add.addItem(new QueryItem("filename", new_filename));
+                                query_add.addItem(new QueryItem("size", new File("files" + DS + "stat" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("date", parseDate(uRecord[5])));
+                                query_add.addItem(new QueryItem("is_image", is_image));
+                                FpsData.add(query_add);
                             } else {
-                                System.out.println( "WARNING: Attachment \"" + parts[0] + ext + "\" not found." );
+                                System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
                             }
                         }
                     }
                 }
             }
-            output += String.format("INSERT INTO `" + PREF + "stat`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `views`, `date`, `comments`, `description`, `sourse`,"
-                    + " `sourse_email`, `sourse_site`, `commented`, `available`, `view_on_home`,"
-                    + (VERSION >= 7 ? " `premoder`," : "") // 2.2 RC1 и новее
-                    + " `on_home_top`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',"
-                    + (VERSION >= 7 ? " 'confirmed'," : "") // 2.2 RC1 и новее
-                    + " '%s');",
-                    uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
-                    uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
-                    uRecord[16], uRecord[17], uRecord[18], commented, available,
-                    "1", on_home_top);
+            if (VERSION >= 7) { // 2.2 RC1 и новее
+                query.addItem(new QueryItem("premoder", "confirmed"));
+            }
         } else { // Старше 1.2 beta
-            output = String.format("INSERT INTO `" + PREF + "stat`"
-                    + " (`id`, `title`, `main`, `author_id`, `category_id`,"
-                    + " `section_id`, `views`, `date`, `comments`, `description`,"
-                    + " `sourse`, `sourse_email`, `sourse_site`, `commented`, `available`,"
-                    + " `view_on_home`, `on_home_top`) VALUES"
-                    + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-                    uRecord[0], addslashes(uRecord[13]), addslashes(uRecord[20]), author_id, uRecord[2],
-                    uRecord[1], uRecord[21], parseDate(uRecord[5]), uRecord[8], addslashes(uRecord[14]),
-                    uRecord[16], uRecord[17], uRecord[18], commented, available,
-                    "1", on_home_top);
+            query.addItem(new QueryItem("section_id", uRecord[1]));
         }
         if (uRecord[22] != null && !uRecord[22].isEmpty()) {
-            output += String.format("INSERT INTO `" + PREF + "stat_add_content`"
-                    + " (`field_id`, `entity_id`, `content`) VALUES ('%s', '%s', '%s');",
-                    "1", uRecord[0], uRecord[19]);
+            InsertQuery query_add = new InsertQuery(PREF + "stat_add_content");
+            query_add.addItem(new QueryItem("field_id", "1"));
+            query_add.addItem(new QueryItem("entity_id", uRecord[0]));
+            query_add.addItem(new QueryItem("content", uRecord[19]));
+            FpsData.add(query_add);
         }
-        return output;
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * comments.txt
      */
-    private String parse_comments(String[] uRecord) {
+    private boolean parse_comments(List FpsData, String[] uRecord) {
         if (uRecord.length < 11) {
-            return null;
+            return false;
         }
         String[] moduleName = {null, "news", "news", "stat", "foto", "loads", null, null};
         String[] tableName = {null, "news_comments", "news_comments", "stat_comments", null, "loads_comments", null, null};
         String[] columnName = {null, "new_id", "new_id", "entity_id", null, "entity_id", null, null};
         int moduleID = 0;
         try {
-            moduleID = Integer.parseInt( uRecord[1] );
+            moduleID = Integer.parseInt(uRecord[1]);
         } catch (Exception e) {
-            return null;
+            return false;
         }
-        if (VERSION < 6 && (moduleID >= tableName.length || tableName[moduleID] == null)) return null;
-        if (VERSION >= 6 && (moduleID >= moduleName.length || moduleName[moduleID] == null)) return null;
+        if (VERSION < 6 && (moduleID >= tableName.length || tableName[moduleID] == null)) {
+            return false;
+        }
+        if (VERSION >= 6 && (moduleID >= moduleName.length || moduleName[moduleID] == null)) {
+            return false;
+        }
         int entity_id = 0;
         try {
-            entity_id = Integer.parseInt( uRecord[2] );
+            entity_id = Integer.parseInt(uRecord[2]);
         } catch (Exception e) {
-            return null;
+            return false;
         }
         if (moduleID == 2) {
             entity_id = (entity_id - 1) * 3 + 2;
@@ -1142,60 +1171,67 @@ public class Converter {
             name = uRecord[6];
         }
         String column = "entity_id";
-        if (VERSION == 0) column = columnName[moduleID];
-        String output = String.format("INSERT INTO `" + PREF + (VERSION < 6 ? tableName[moduleID] : "comments") + "`"
-            + " (`" + column + "`, `name`, `message`, `ip`, `mail`"
-            + (VERSION > 2 ? ", `date`" : "" ) // 1.1.9 и новее
-            + (VERSION > 4 ? ", `user_id`" : "" ) // 1.3 RC и новее
-            + (VERSION >= 6 ? ", `module`" : "" ) // 2.1 RC7 и новее
-            + (VERSION >= 9 ? ", `premoder`" : "" ) // 2.5 RC1 и новее
-            + ") VALUES"
-            + " ('%s', '%s', '%s', '%s', '%s'"
-            + (VERSION > 2 ? ", '" + parseDate(uRecord[4]) + "'" : "" ) // 1.1.9 и новее
-            + (VERSION > 4 ? ", '" + (uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0") + "'" : "" ) // 1.3 RC и новее
-            + (VERSION >= 6 ? ", '" + moduleName[moduleID] + "'" : "" ) // 2.1 RC7 и новее
-            + (VERSION >= 9 ? "'confirmed'" : "" ) // 2.5 RC1 и новее
-            + ");",
-            entity_id, name, addslashes((VERSION > 2 ? "" : "[" + parseDate(uRecord[4]) + "]: ") + uRecord[10]), uRecord[9], uRecord[7]);
-        return output;
+        if (VERSION == 0) {
+            column = columnName[moduleID];
+        }
+        InsertQuery query = new InsertQuery(PREF + (VERSION < 6 ? tableName[moduleID] : "comments"));
+        query.addItem(new QueryItem(column, entity_id));
+        query.addItem(new QueryItem("name", name));
+        query.addItem(new QueryItem("message", addslashes((VERSION > 2 ? "" : "[" + parseDate(uRecord[4]) + "]: ") + uRecord[10])));
+        query.addItem(new QueryItem("ip", uRecord[9]));
+        query.addItem(new QueryItem("mail", uRecord[7]));
+        if (VERSION > 2) { // 1.1.9 и новее
+            query.addItem(new QueryItem("date", parseDate(uRecord[4])));
+        }
+        if (VERSION > 4) { // 1.3 RC и новее
+            query.addItem(new QueryItem("user_id", uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0"));
+        }
+        if (VERSION >= 6) { // 2.1 RC7 и новее
+            query.addItem(new QueryItem("module", moduleName[moduleID]));
+        }
+        if (VERSION >= 9) { // 2.5 RC1 и новее
+            query.addItem(new QueryItem("premoder", "confirmed"));
+        }
+        FpsData.add(query);
+        return true;
     }
 
     /**
      * users.txt
      */
-    private String parse_users(String[] uRecord) {
+    private boolean parse_users(List FpsData, String[] uRecord) {
         if (uRecord.length < 24) {
-            return null;
+            return false;
         }
-        if (!uRecord[3].isEmpty() && !uRecord[3].equals( "0" )) {
-            String[] path = uRecord[3].split( "/" );
+        if (!uRecord[3].isEmpty() && !uRecord[3].equals("0")) {
+            String[] path = uRecord[3].split("/");
             if (path.length > 1) {
-                File file = new File( AVATAR_TABLES + path[path.length - 2] + DS + path[path.length - 1] );
+                File file = new File(AVATAR_TABLES + path[path.length - 2] + DS + path[path.length - 1]);
                 try {
                     BufferedImage imag = null;
                     if (file.exists()) {
-                        imag = ImageIO.read( file );
+                        imag = ImageIO.read(file);
                     } else if (USE_WEB_AVATARS) {
-                        imag = ImageIO.read( new URL ((String)uRecord[3]) );
+                        imag = ImageIO.read(new URL((String) uRecord[3]));
                     }
                     if (imag != null) {
-                        if( imag.getColorModel().getTransparency() != Transparency.OPAQUE) {
+                        if (imag.getColorModel().getTransparency() != Transparency.OPAQUE) {
                             int w = imag.getWidth();
                             int h = imag.getHeight();
-                            BufferedImage image2 = new BufferedImage( w, h, BufferedImage.TYPE_INT_RGB );
-                            image2.createGraphics().drawImage( imag, 0, 0, image2.getWidth(), image2.getHeight(), java.awt.Color.WHITE, null );
+                            BufferedImage image2 = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+                            image2.createGraphics().drawImage(imag, 0, 0, image2.getWidth(), image2.getHeight(), java.awt.Color.WHITE, null);
                             imag = image2;
                         }
-                        File new_file = new File( "avatars" + DS + uUsers.get(uRecord[0]) + ".jpg" );
-                        ImageIO.write( imag, "JPEG", new_file );
+                        File new_file = new File("avatars" + DS + uUsers.get(uRecord[0]) + ".jpg");
+                        ImageIO.write(imag, "JPEG", new_file);
                         if (file.exists()) {
-                            new_file.setLastModified( file.lastModified() );
+                            new_file.setLastModified(file.lastModified());
                         }
                     } else {
-                        System.out.println( "WARNING: File \"" + file.getName() + "\" not found. Avatar for user \"" + uRecord[0] + "\" not created." );
+                        System.out.println("WARNING: File \"" + file.getName() + "\" not found. Avatar for user \"" + uRecord[0] + "\" not created.");
                     }
                 } catch (Exception e) {
-                    System.out.println( "WARNING: Avatar for user \"" + uRecord[0] + "\" not created." );
+                    System.out.println("WARNING: Avatar for user \"" + uRecord[0] + "\" not created.");
                 }
             }
         }
@@ -1206,9 +1242,9 @@ public class Converter {
         String locked = "0";
         String activation = uRecord[23].equals("0") ? "" : uRecord[23];
         try {
-        Object ob = uUsersMeta.get(uRecord[0]);
+            Object ob = uUsersMeta.get(uRecord[0]);
             if (ob != null) {
-                String[] str = (String[])ob;
+                String[] str = (String[]) ob;
                 posts = str[9];
                 status = ((Integer.parseInt(str[2]) <= 4) ? str[2] : "1");
                 last_visit = str[18];
@@ -1217,7 +1253,8 @@ public class Converter {
                 posts = "0";
                 status = "1";
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         if (uUsers.get(uRecord[0]).equals("1") && PASSWORD != null && !PASSWORD.isEmpty()) {
@@ -1234,19 +1271,38 @@ public class Converter {
             byear = cal.get(Calendar.YEAR);
             bmonth = cal.get(Calendar.MONTH) + 1;
             bday = cal.get(Calendar.DATE);
-        } catch (ParseException ex) {}
+        } catch (ParseException ex) {
+        }
 
-        String output = String.format("INSERT INTO `" + PREF + "users`"
-            + " (`id`, `name`, `passw`, `email`, `url`, `icq`, `signature`, `puttime`, `last_visit`, `posts`, `status`, `locked`, `activation`"
-            + (VERSION > 1 ? ", `warnings`, `ban_expire`" : "" ) // 1.1.8 beta и новее
-            + (VERSION > 2 ? ", `pol`, `jabber`, `city`, `telephone`, `byear`, `bmonth`, `bday`" : "" ) // 1.1.9 и новее
-            + ") VALUES"
-            + " ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'"
-            + (VERSION > 1 ? ", '0', 0" : "" ) // 1.1.8 beta и новее
-            + (VERSION > 2 ? ", '" + (uRecord[6].equals("2") ? "f" : "m") + "', '', '" + addslashes(uRecord[12]) + "', '', '" + Integer.toString(byear) + "', '" + Integer.toString(bmonth) + "', '" + Integer.toString(bday) + "'" : "" ) // 1.1.9 и новее
-            + ");",
-            uUsers.get(uRecord[0]), addslashes(uRecord[0]), addslashes(uRecord[2]), addslashes(uRecord[7]), addslashes(uRecord[8]), addslashes(uRecord[9]), addslashes(uRecord[13]), parseDate(uRecord[15]), parseDate(last_visit), posts, status, locked, activation);
-        return output;
+        InsertQuery query = new InsertQuery(PREF + "users");
+        query.addItem(new QueryItem("id", (String) uUsers.get(uRecord[0])));
+        query.addItem(new QueryItem("name", addslashes(uRecord[0])));
+        query.addItem(new QueryItem("passw", addslashes(uRecord[2])));
+        query.addItem(new QueryItem("email", addslashes(uRecord[7])));
+        query.addItem(new QueryItem("url", addslashes(uRecord[8])));
+        query.addItem(new QueryItem("icq", addslashes(uRecord[9])));
+        query.addItem(new QueryItem("signature", addslashes(uRecord[13])));
+        query.addItem(new QueryItem("puttime", parseDate(uRecord[15])));
+        query.addItem(new QueryItem("last_visit", parseDate(last_visit)));
+        query.addItem(new QueryItem("posts", posts));
+        query.addItem(new QueryItem("status", status));
+        query.addItem(new QueryItem("locked", locked));
+        query.addItem(new QueryItem("activation", activation));
+        if (VERSION > 1) { // 1.1.8 beta и новее
+            query.addItem(new QueryItem("warnings", "0"));
+            query.addItem(new QueryItem("ban_expire", "0"));
+        }
+        if (VERSION > 2) { // 1.1.9 и новее
+            query.addItem(new QueryItem("pol", (uRecord[6].equals("2") ? "f" : "m")));
+            query.addItem(new QueryItem("jabber", ""));
+            query.addItem(new QueryItem("city", addslashes(uRecord[12])));
+            query.addItem(new QueryItem("telephone", ""));
+            query.addItem(new QueryItem("byear", byear));
+            query.addItem(new QueryItem("bmonth", bmonth));
+            query.addItem(new QueryItem("bday", bday));
+        }
+        FpsData.add(query);
+        return true;
     }
 
     public boolean initUsers() {
@@ -1364,11 +1420,16 @@ public class Converter {
                         emptySql.add(new TruncateQuery(PREF + "loads"));
                         emptySql.add(new TruncateQuery(PREF + "loads_add_content"));
                     }
-                        if (VERSION <= 3) { // Старше 1.2 beta
-                            emptySql.add( "INSERT INTO `" + PREF + "loads_add_fields`"
-                                        + " (`id`, `type`, `name`,`label`,`size`,`params`) VALUES"
-                                        + " ('1', 'text', '', 'Ссылка для скачивания архива с другого сервера', '255', 'a:0:{}');" );
-                        }
+                    if (VERSION <= 3) { // Старше 1.2 beta
+                        InsertQuery query = new InsertQuery(PREF + "loads_add_fields");
+                        query.addItem(new QueryItem("id", "1"));
+                        query.addItem(new QueryItem("type", "text"));
+                        query.addItem(new QueryItem("name", ""));
+                        query.addItem(new QueryItem("label", "Ссылка для скачивания архива с другого сервера"));
+                        query.addItem(new QueryItem("size", "255"));
+                        query.addItem(new QueryItem("params", "a:0:{}"));
+                        emptySql.add(query);
+                    }
                         // Инициализация папки для работы с файлами
                         try {
                             File outputForumDir = new File( "files" + DS + LOADS_OUT );
@@ -1394,9 +1455,14 @@ public class Converter {
                         emptySql.add(new TruncateQuery(PREF + "stat"));
                         emptySql.add(new TruncateQuery(PREF + "stat_add_content"));
                     }
-                        emptySql.add( "INSERT INTO `" + PREF + "stat_add_fields`"
-                                    + " (`id`, `type`, `name`,`label`,`size`,`params`) VALUES"
-                                    + " ('1', 'text', '', 'Ссылка на источник материала', '255', 'a:0:{}');" );
+                        InsertQuery query = new InsertQuery(PREF + "stat_add_fields");
+                        query.addItem(new QueryItem("id", "1"));
+                        query.addItem(new QueryItem("type", "text"));
+                        query.addItem(new QueryItem("name", ""));
+                        query.addItem(new QueryItem("label", "Ссылка на источник материала"));
+                        query.addItem(new QueryItem("size", "255"));
+                        query.addItem(new QueryItem("params", "a:0:{}"));
+                        emptySql.add(query);
                         if (VERSION > 2) { // 1.1.9 и новее
                             // Инициализация папок для работы с вложениями
                             uStatAttachDir = new ArrayList();
@@ -1432,22 +1498,22 @@ public class Converter {
                            uTables[i].equals("news") || uTables[i].equals("blog") || uTables[i].equals("faq")) {
                     if (!newsEmpty) {
                         if (!NO_EMPTY) {
-                        emptySql.add(new TruncateQuery(PREF + "news"));
-                        emptySql.add(new TruncateQuery(PREF + "news_sections"));
-                    }
-                    if (VERSION > 2) { // 1.1.9 и новее
-                        // Инициализация папок для работы с вложениями
-                        uNewsAttachDir = new ArrayList();
-                        uBlogAttachDir = new ArrayList();
-                        uFaqAttachDir = new ArrayList();
-                        try {
-                            File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                            if (newsAttachDir.exists()) {
-                                String[] attach_cats = newsAttachDir.list();
-                                for (int j = 0; j < attach_cats.length; j++) {
-                                    uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
-                                }
-                            } else {
+                            emptySql.add(new TruncateQuery(PREF + "news"));
+                            emptySql.add(new TruncateQuery(PREF + "news_sections"));
+                        }
+                        if (VERSION > 2) { // 1.1.9 и новее
+                            // Инициализация папок для работы с вложениями
+                            uNewsAttachDir = new ArrayList();
+                            uBlogAttachDir = new ArrayList();
+                            uFaqAttachDir = new ArrayList();
+                            try {
+                                File newsAttachDir = new File(NEWS_ATTACH_TABLES);
+                                if (newsAttachDir.exists()) {
+                                    String[] attach_cats = newsAttachDir.list();
+                                    for (int j = 0; j < attach_cats.length; j++) {
+                                        uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[j] + DS);
+                                    }
+                                } else {
                                     System.out.println( "WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported." );
                                 }
                                 File blogAttachDir = new File(BLOG_ATTACH_TABLES);
@@ -1489,36 +1555,66 @@ public class Converter {
                                 }
                             } catch (Exception e) {}
                         }
-                    newsEmpty = true;
-                }
-                if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
-                    if (!addNews) {
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('1', '0', 'Новости'" + (VERSION > 3 ? "" : ", 'section'") + ");");
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('4', '1', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
+                        newsEmpty = true;
+                    }
+                    if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
+                        if (!addNews) {
+                            InsertQuery query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "1"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                            query.addItem(new QueryItem("title", "Новости"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "section"));
+                            }
+                            emptySql.add(query);
+                            query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "4"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1"));
+                            query.addItem(new QueryItem("title", "Без категории"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "category"));
+                            }
+                            emptySql.add(query);
                             addNews = true;
                         }
                     } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
                         if (!addBlog) {
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('2', '0', 'Блоги'" + (VERSION > 3 ? "" : ", 'section'") + ");");
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('5', '2', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
+                            InsertQuery query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "2"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                            query.addItem(new QueryItem("title", "Блоги"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "section"));
+                            }
+                            emptySql.add(query);
+                            query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "5"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2"));
+                            query.addItem(new QueryItem("title", "Без категории"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "category"));
+                            }
+                            emptySql.add(query);
                             addBlog = true;
                         }
                     } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
                         if (!addFAQ) {
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('3', '0', 'FAQ'" + (VERSION > 3 ? "" : ", 'section'") + ");");
-                            emptySql.add( "INSERT INTO `" + PREF + "news_sections`"
-                                        + " (`id`, " + (VERSION > 3 ? "`parent_id`" : "`section_id`") + ", `title`" + (VERSION > 3 ? "" : ", `class`") + ") VALUES"
-                                        + " ('6', '3', 'Без категории'" + (VERSION > 3 ? "" : ", 'category'") + ");");
+                            InsertQuery query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "3"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
+                            query.addItem(new QueryItem("title", "FAQ"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "section"));
+                            }
+                            emptySql.add(query);
+                            query = new InsertQuery(PREF + "news_sections");
+                            query.addItem(new QueryItem("id", "6"));
+                            query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3"));
+                            query.addItem(new QueryItem("title", "Без категории"));
+                            if (VERSION <= 3) {
+                                query.addItem(new QueryItem("class", "category"));
+                            }
+                            emptySql.add(query);
                             addFAQ = true;
                     }
                 }
@@ -1555,25 +1651,22 @@ public class Converter {
                             uRecord[j] = uRecord[j].replace("&#124;", "|");
                         }
                     }
-                    String sqlRecord = null;
-                    if (uTables[i].equals("users")) sqlRecord = parse_users(uRecord);
-                    else if (uTables[i].equals("fr_fr")) sqlRecord = parse_fr_fr(uRecord);
-                    else if (uTables[i].equals("forum")) sqlRecord = parse_forum(uRecord);
-                    else if (uTables[i].equals("forump")) sqlRecord = parse_forump(uRecord);
-                    else if (uTables[i].equals("ld_ld")) sqlRecord = parse_ld_ld(uRecord);
-                    else if (uTables[i].equals("loads")) sqlRecord = parse_loads(uRecord);
-                    else if (uTables[i].equals("pu_pu")) sqlRecord = parse_pu_pu(uRecord);
-                    else if (uTables[i].equals("publ")) sqlRecord = parse_publ(uRecord);
-                    else if (uTables[i].equals("nw_nw")) sqlRecord = parse_nw_nw(uRecord, 1);
-                    else if (uTables[i].equals("news")) sqlRecord = parse_news(uRecord, 1);
-                    else if (uTables[i].equals("bl_bl")) sqlRecord = parse_nw_nw(uRecord, 2);
-                    else if (uTables[i].equals("blog")) sqlRecord = parse_news(uRecord, 2);
-                    else if (uTables[i].equals("fq_fq")) sqlRecord = parse_nw_nw(uRecord, 3);
-                    else if (uTables[i].equals("faq")) sqlRecord = parse_faq(uRecord);
-                    else if (uTables[i].equals("comments")) sqlRecord = parse_comments(uRecord);
+                    if (uTables[i].equals("users")) parse_users(FpsData, uRecord);
+                    else if (uTables[i].equals("fr_fr")) parse_fr_fr(FpsData, uRecord);
+                    else if (uTables[i].equals("forum")) parse_forum(FpsData, uRecord);
+                    else if (uTables[i].equals("forump"))parse_forump(FpsData, uRecord);
+                    else if (uTables[i].equals("ld_ld")) parse_ld_ld(FpsData, uRecord);
+                    else if (uTables[i].equals("loads")) parse_loads(FpsData, uRecord);
+                    else if (uTables[i].equals("pu_pu")) parse_pu_pu(FpsData, uRecord);
+                    else if (uTables[i].equals("publ")) parse_publ(FpsData, uRecord);
+                    else if (uTables[i].equals("nw_nw")) parse_nw_nw(FpsData, uRecord, 1);
+                    else if (uTables[i].equals("news")) parse_news(FpsData, uRecord, 1);
+                    else if (uTables[i].equals("bl_bl")) parse_nw_nw(FpsData, uRecord, 2);
+                    else if (uTables[i].equals("blog")) parse_news(FpsData, uRecord, 2);
+                    else if (uTables[i].equals("fq_fq")) parse_nw_nw(FpsData, uRecord, 3);
+                    else if (uTables[i].equals("faq")) parse_faq(FpsData, uRecord);
+                    else if (uTables[i].equals("comments")) parse_comments(FpsData, uRecord);
                     line_int = "";
-                    if (sqlRecord == null) continue;
-                    FpsData.add(sqlRecord);
                 }
             }
             catch (Exception e) {

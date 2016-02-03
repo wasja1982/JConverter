@@ -15,13 +15,17 @@ public class QueryItem {
 
     public QueryItem(String name, String value) {
         this.name = name;
-        this.value = value;
+        this.setValue(value);
     }
 
-    public QueryItem(String name, String value, ItemType type) {
+    public QueryItem(String name, long value) {
         this.name = name;
-        this.value = value;
-        this.type = type;
+        this.setValue(value);
+    }
+
+    public QueryItem(String name, Date value) {
+        this.name = name;
+        this.setValue(value);
     }
 
     public String getName() {
@@ -36,17 +40,17 @@ public class QueryItem {
         return value;
     }
 
-    public void setValue(String value) {
+    public final void setValue(String value) {
         this.value = value;
         this.type = ItemType.TEXT;
     }
 
-    public void setValue(long value) {
+    public final void setValue(long value) {
         this.value = Long.toString(value);
         this.type = ItemType.NUMERIC;
     }
 
-    public void setValue(Date value) {
+    public final void setValue(Date value) {
         this.value = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(value);
         this.type = ItemType.DATE;
     }

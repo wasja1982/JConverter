@@ -2,6 +2,10 @@ package AtomM;
 
 public class InsertQuery extends Query {
 
+    public InsertQuery() {
+        super("");
+    }
+    
     public InsertQuery(String table) {
         super(table);
     }
