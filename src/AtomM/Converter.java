@@ -113,11 +113,16 @@ public class Converter {
         return hexString.toString();
     }
 
-    private String parseDate(String date) {
+    private Date parseDate(String date) {
+        Date parse = (date != null && !date.isEmpty() && !date.equals("0")) ? new Date(Long.parseLong(date) * 1000) : new Date();
+        return parse;
+    }
+
+    private String parseDateToString(String date) {
         String parse = "0000-00-00 00:00:00";
         if (date != null && !date.isEmpty() && !date.equals("0")) {
             try {
-                parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(Long.parseLong(date) * 1000));
+                parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parseDate(date));
             } catch (Exception e) {
                 parse = "0000-00-00 00:00:00";
             }
@@ -651,7 +656,7 @@ public class Converter {
         if (uRecord.length < 6) {
             return false;
         }
-        InsertQuery query = new InsertQuery();
+        InsertQuery query = new InsertQuery(PREF + "forums");
         query.addItem(new QueryItem("id", uRecord[0]));
         query.addItem(new QueryItem("title", addslashes(uRecord[5])));
         if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
@@ -678,7 +683,6 @@ public class Converter {
             } catch (Exception e) {
                 posts = "0";
             }
-            query.setTable(PREF + "forums");
             query.addItem(new QueryItem("in_cat", uRecord[1]));
             query.addItem(new QueryItem("last_theme_id", last_theme_id));
             query.addItem(new QueryItem("themes", themes));
@@ -822,18 +826,9 @@ public class Converter {
                 System.out.println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
             }
         }
-        String commented = "1";
-        if (uRecord[7].equals("0")) {
-            commented = "0";
-        }
-        String available = "0";
-        if (uRecord[6].equals("0")) {
-            available = "1";
-        }
-        String on_home_top = "0";
-        if (uRecord[4].equals("1")) {
-            on_home_top = "1";
-        }
+        String commented = (uRecord[7].equals("0")) ? "0" : "1";
+        String available = (uRecord[6].equals("0")) ? "1" : "0";
+        String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[26]);
@@ -866,6 +861,7 @@ public class Converter {
             try {
                 lsize = Long.parseLong(uRecord[23]);
             } catch (NumberFormatException ex) {
+                lsize = 0;
             }
             if (VERSION >= 7) { // 2.2 RC1 и новее
                 query.addItem(new QueryItem("premoder", "confirmed"));
@@ -908,18 +904,9 @@ public class Converter {
         if (category_id == 0) {
             category_id = 1;
         }
-        String commented = "1";
-        if (uRecord[7].equals("0")) {
-            commented = "0";
-        }
-        String available = "0";
-        if (uRecord[5].equals("0")) {
-            available = "1";
-        }
-        String on_home_top = "0";
-        if (uRecord[6].equals("1")) {
-            on_home_top = "1";
-        }
+        String commented = (uRecord[7].equals("0")) ? "0" : "1";
+        String available = (uRecord[5].equals("0")) ? "1" : "0";
+        String on_home_top = (uRecord[6].equals("1")) ? "1" : "0";
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[10]);
@@ -1007,10 +994,7 @@ public class Converter {
         } catch (Exception e) {
             category_id = 6;
         }
-        String available = "0";
-        if (uRecord[5].equals("0")) {
-            available = "1";
-        }
+        String available = (uRecord[5].equals("0")) ? "1" : "0";
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[13]);
@@ -1083,18 +1067,9 @@ public class Converter {
         if (uRecord.length < 25) {
             return false;
         }
-        String commented = "1";
-        if (uRecord[7].equals("0")) {
-            commented = "0";
-        }
-        String available = "0";
-        if (uRecord[6].equals("0")) {
-            available = "1";
-        }
-        String on_home_top = "0";
-        if (uRecord[4].equals("1")) {
-            on_home_top = "1";
-        }
+        String commented = (uRecord[7].equals("0")) ? "0" : "1";
+        String available = (uRecord[6].equals("0")) ? "1" : "0";
+        String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
         String author_id = "0";
         try {
             Object obj = uUsers.get(uRecord[15]);
@@ -1205,10 +1180,7 @@ public class Converter {
         } else if (moduleID == 3) {
             entity_id = (entity_id - 1) * 3 + 1;
         }
-        String name = uRecord[5];
-        if (name == null || name.isEmpty()) {
-            name = uRecord[6];
-        }
+        String name = (uRecord[5] == null || uRecord[5].isEmpty()) ? uRecord[6] : uRecord[5];
         String column = "entity_id";
         if (VERSION == 0) {
             column = columnName[moduleID];
@@ -1216,7 +1188,7 @@ public class Converter {
         InsertQuery query = new InsertQuery(PREF + (VERSION < 6 ? tableName[moduleID] : "comments"));
         query.addItem(new QueryItem(column, entity_id));
         query.addItem(new QueryItem("name", name));
-        query.addItem(new QueryItem("message", addslashes((VERSION > 2 ? "" : "[" + parseDate(uRecord[4]) + "]: ") + uRecord[10])));
+        query.addItem(new QueryItem("message", addslashes((VERSION > 2 ? "" : "[" + parseDateToString(uRecord[4]) + "]: ") + uRecord[10])));
         query.addItem(new QueryItem("ip", uRecord[9]));
         query.addItem(new QueryItem("mail", uRecord[7]));
         if (VERSION > 2) { // 1.1.9 и новее
