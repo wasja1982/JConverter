@@ -617,7 +617,7 @@ public class Converter {
                             } else {
                                 filename = ((String) uForumAttachDir.get(j)) + attaches[i];
                             }
-                            if (copyFile(filename, "files" + DS + "forum" + DS + new_filename)) {
+                            if (copyFile(filename, (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename)) {
                                 exist = true;
                                 break;
                             }
@@ -629,7 +629,7 @@ public class Converter {
                             query_add.addItem(new QueryItem("user_id", id_author));
                             query_add.addItem(new QueryItem("attach_number", i + 1));
                             query_add.addItem(new QueryItem("filename", new_filename));
-                            query_add.addItem(new QueryItem("size", new File("files" + DS + "forum" + DS + new_filename).length()));
+                            query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length()));
                             query_add.addItem(new QueryItem("date", parseDate(uRecord[2])));
                             query_add.addItem(new QueryItem("is_image", is_image));
                             FpsData.add(query_add);
@@ -950,7 +950,7 @@ public class Converter {
                             boolean exist = false;
                             for (int j = 0; j < attachDir.size(); j++) {
                                 String filename = ((String) attachDir.get(j)) + parts[0] + ext;
-                                if (copyFile(filename, "files" + DS + "news" + DS + new_filename)) {
+                                if (copyFile(filename, (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
@@ -961,7 +961,7 @@ public class Converter {
                                 query_add.addItem(new QueryItem("user_id", author_id));
                                 query_add.addItem(new QueryItem("attach_number", i + 1));
                                 query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File("files" + DS + "news" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length()));
                                 query_add.addItem(new QueryItem("date", parseDate(uRecord[8])));
                                 query_add.addItem(new QueryItem("is_image", is_image));
                                 FpsData.add(query_add);
@@ -1035,7 +1035,7 @@ public class Converter {
                             boolean exist = false;
                             for (int j = 0; j < uFaqAttachDir.size(); j++) {
                                 String filename = ((String) uFaqAttachDir.get(j)) + parts[0] + ext;
-                                if (copyFile(filename, "files" + DS + "news" + DS + new_filename)) {
+                                if (copyFile(filename, (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
@@ -1046,7 +1046,7 @@ public class Converter {
                                 query_add.addItem(new QueryItem("user_id", author_id));
                                 query_add.addItem(new QueryItem("attach_number", i + 1));
                                 query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File("files" + DS + "news" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length()));
                                 query_add.addItem(new QueryItem("date", parseDate(uRecord[4])));
                                 query_add.addItem(new QueryItem("is_image", is_image));
                                 FpsData.add(query_add);
@@ -1115,7 +1115,7 @@ public class Converter {
                             boolean exist = false;
                             for (int j = 0; j < uStatAttachDir.size(); j++) {
                                 String filename = ((String) uStatAttachDir.get(j)) + parts[0] + ext;
-                                if (copyFile(filename, "files" + DS + "stat" + DS + new_filename)) {
+                                if (copyFile(filename, (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "stat" + DS + new_filename)) {
                                     exist = true;
                                     break;
                                 }
@@ -1126,7 +1126,7 @@ public class Converter {
                                 query_add.addItem(new QueryItem("user_id", author_id));
                                 query_add.addItem(new QueryItem("attach_number", i + 1));
                                 query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File("files" + DS + "stat" + DS + new_filename).length()));
+                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "stat" + DS + new_filename).length()));
                                 query_add.addItem(new QueryItem("date", parseDate(uRecord[5])));
                                 query_add.addItem(new QueryItem("is_image", is_image));
                                 FpsData.add(query_add);
@@ -1436,6 +1436,20 @@ public class Converter {
                                     uForumAttachDir.clear();
                                 }
                             }
+                            outputForumDir = new File("images" + DS + "forum");
+                            if (outputForumDir.exists()) {
+                                if (!outputForumDir.isDirectory()) {
+                                    System.out.println("WARNING: Path \"images" + DS + "forum\" is not directory. Attachments not supported.");
+                                    uForumAttachDir.clear();
+                                }
+                            } else {
+                                try {
+                                    outputForumDir.mkdirs();
+                                } catch (Exception e) {
+                                    System.out.println("WARNING: Path \"images" + DS + "forum\" can't created. Attachments not supported.");
+                                    uForumAttachDir.clear();
+                                }
+                            }
                         } else {
                             System.out.println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported.");
                         }
@@ -1532,6 +1546,20 @@ public class Converter {
                                         uStatAttachDir.clear();
                                     }
                                 }
+                                outputForumDir = new File("images" + DS + "stat");
+                                if (outputForumDir.exists()) {
+                                    if (!outputForumDir.isDirectory()) {
+                                        System.out.println("WARNING: Path \"images" + DS + "stat\" is not directory. Attachments not supported.");
+                                        uStatAttachDir.clear();
+                                    }
+                                } else {
+                                    try {
+                                        outputForumDir.mkdirs();
+                                    } catch (Exception e) {
+                                        System.out.println("WARNING: Path \"images" + DS + "stat\" can't created. Attachments not supported.");
+                                        uStatAttachDir.clear();
+                                    }
+                                }
                             } else {
                                 System.out.println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments not supported.");
                             }
@@ -1582,6 +1610,24 @@ public class Converter {
                             }
                             // Результирующая папка
                             File outputForumDir = new File("files" + DS + "news");
+                            if (outputForumDir.exists()) {
+                                if (!outputForumDir.isDirectory()) {
+                                    System.out.println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
+                                    uNewsAttachDir.clear();
+                                    uBlogAttachDir.clear();
+                                    uFaqAttachDir.clear();
+                                }
+                            } else {
+                                try {
+                                    outputForumDir.mkdirs();
+                                } catch (Exception e) {
+                                    System.out.println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
+                                    uNewsAttachDir.clear();
+                                    uBlogAttachDir.clear();
+                                    uFaqAttachDir.clear();
+                                }
+                            }
+                            outputForumDir = new File("images" + DS + "news");
                             if (outputForumDir.exists()) {
                                 if (!outputForumDir.isDirectory()) {
                                     System.out.println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");

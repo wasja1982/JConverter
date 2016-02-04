@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class Main {
 
-    static int CURRENT_VERSION = 10;
+    static int CURRENT_VERSION = 11;
 
     private static void createFile(String filename, ArrayList data) {
         try {
@@ -27,7 +27,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        System.out.println("JConvertor v0.4");
+        System.out.println("JConvertor v0.5");
         String path = ".";
         String pref = "";
         String password = null;
