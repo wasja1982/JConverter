@@ -1,6 +1,7 @@
-package AtomM;
+package AtomM.SQL;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class Query implements Cloneable {
@@ -35,6 +36,18 @@ public class Query implements Cloneable {
 
     public boolean addItem(QueryItem item) {
         return this.items.add(item);
+    }
+
+    public boolean addItem(String name, String value) {
+        return this.items.add(new QueryItem(name, value));
+    }
+
+    public boolean addItem(String name, long value) {
+        return this.items.add(new QueryItem(name, value));
+    }
+
+    public boolean addItem(String name, Date value) {
+        return this.items.add(new QueryItem(name, value));
     }
 
     public QueryItem getItem(int number) {

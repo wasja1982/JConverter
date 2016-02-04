@@ -1,4 +1,4 @@
-package AtomM;
+package AtomM.SQL;
 
 public class InsertQuery extends Query {
 

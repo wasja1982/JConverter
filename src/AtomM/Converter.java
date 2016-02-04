@@ -1,6 +1,8 @@
 package AtomM;
 
 //import java.awt.Graphics2D;
+import AtomM.SQL.InsertQuery;
+import AtomM.SQL.TruncateQuery;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -563,18 +565,18 @@ public class Converter {
             id_last_author = "0";
         }
         InsertQuery query = new InsertQuery(PREF + "themes");
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("id_forum", uRecord[1]));
-        query.addItem(new QueryItem("important", uRecord[3]));
-        query.addItem(new QueryItem("id_last_author", id_last_author));
-        query.addItem(new QueryItem("last_post", parseDate(uRecord[4])));
-        query.addItem(new QueryItem("locked", uRecord[5]));
-        query.addItem(new QueryItem("posts", uRecord[6]));
-        query.addItem(new QueryItem("views", uRecord[7]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[8])));
-        query.addItem(new QueryItem("id_author", id_author));
+        query.addItem("id", uRecord[0]);
+        query.addItem("id_forum", uRecord[1]);
+        query.addItem("important", uRecord[3]);
+        query.addItem("id_last_author", id_last_author);
+        query.addItem("last_post", parseDate(uRecord[4]));
+        query.addItem("locked", uRecord[5]);
+        query.addItem("posts", uRecord[6]);
+        query.addItem("views", uRecord[7]);
+        query.addItem("title", addslashes(uRecord[8]));
+        query.addItem("id_author", id_author);
         if (VERSION > 0) {
-            query.addItem(new QueryItem("description", addslashes(uRecord[9])));
+            query.addItem("description", addslashes(uRecord[9]));
         }
         if (VERSION >= 10) { // AtomM 4 и новее
             uThemes.put(uRecord[0], uRecord[1]);
@@ -624,14 +626,14 @@ public class Converter {
                         }
                         if (exist) {
                             InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
-                            query_add.addItem(new QueryItem("post_id", uRecord[0]));
-                            query_add.addItem(new QueryItem("theme_id", uRecord[1]));
-                            query_add.addItem(new QueryItem("user_id", id_author));
-                            query_add.addItem(new QueryItem("attach_number", i + 1));
-                            query_add.addItem(new QueryItem("filename", new_filename));
-                            query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length()));
-                            query_add.addItem(new QueryItem("date", parseDate(uRecord[2])));
-                            query_add.addItem(new QueryItem("is_image", is_image));
+                            query_add.addItem("post_id", uRecord[0]);
+                            query_add.addItem("theme_id", uRecord[1]);
+                            query_add.addItem("user_id", id_author);
+                            query_add.addItem("attach_number", i + 1);
+                            query_add.addItem("filename", new_filename);
+                            query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length());
+                            query_add.addItem("date", parseDate(uRecord[2]));
+                            query_add.addItem("is_image", is_image);
                             FpsData.add(query_add);
                         } else {
                             System.out.println("WARNING: Attachment \"" + attaches[i] + "\" not found.");
@@ -642,15 +644,15 @@ public class Converter {
         }
 
         InsertQuery query = new InsertQuery(PREF + "posts");
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("id_theme", uRecord[1]));
-        query.addItem(new QueryItem("time", parseDate(uRecord[2])));
-        query.addItem(new QueryItem("message", addslashes(uRecord[4])));
-        query.addItem(new QueryItem("id_author", id_author));
-        query.addItem(new QueryItem("edittime", parseDate(uRecord[9])));
-        query.addItem(new QueryItem("attaches", attach));
+        query.addItem("id", uRecord[0]);
+        query.addItem("id_theme", uRecord[1]);
+        query.addItem("time", parseDate(uRecord[2]));
+        query.addItem("message", addslashes(uRecord[4]));
+        query.addItem("id_author", id_author);
+        query.addItem("edittime", parseDate(uRecord[9]));
+        query.addItem("attaches", attach);
         if (VERSION >= 10 && uThemes != null && uThemes.containsKey(uRecord[1])) { // AtomM 4 и новее
-            query.addItem(new QueryItem("id_forum", (String)uThemes.get(uRecord[1])));
+            query.addItem("id_forum", (String)uThemes.get(uRecord[1]));
         }
         FpsData.add(query);
         return true;
@@ -664,8 +666,8 @@ public class Converter {
             return false;
         }
         InsertQuery query = new InsertQuery(PREF + "forums");
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
+        query.addItem("id", uRecord[0]);
+        query.addItem("title", addslashes(uRecord[5]));
         if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
             query.setTable(PREF + "forum_cat");
         } else {
@@ -690,11 +692,11 @@ public class Converter {
             } catch (Exception e) {
                 posts = "0";
             }
-            query.addItem(new QueryItem("in_cat", uRecord[1]));
-            query.addItem(new QueryItem("last_theme_id", last_theme_id));
-            query.addItem(new QueryItem("themes", themes));
-            query.addItem(new QueryItem("posts", posts));
-            query.addItem(new QueryItem("description", addslashes(uRecord[6])));
+            query.addItem("in_cat", uRecord[1]);
+            query.addItem("last_theme_id", last_theme_id);
+            query.addItem("themes", themes);
+            query.addItem("posts", posts);
+            query.addItem("description", addslashes(uRecord[6]));
         }
         FpsData.add(query);
         return true;
@@ -714,15 +716,15 @@ public class Converter {
             section_id = "0";
         }
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "loads_categories" : "loads_sections"));
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
-        query.addItem(new QueryItem("announce", addslashes(uRecord[6])));
-        query.addItem(new QueryItem("view_on_home", "0"));
+        query.addItem("id", uRecord[0]);
+        query.addItem("title", addslashes(uRecord[5]));
+        query.addItem("announce", addslashes(uRecord[6]));
+        query.addItem("view_on_home", "0");
         if (VERSION > 3) { // 1.2 beta и новее
-            query.addItem(new QueryItem("parent_id", section_id));
-            query.addItem(new QueryItem("no_access", ""));
+            query.addItem("parent_id", section_id);
+            query.addItem("no_access", "");
             if (VERSION >= 8) { // 2.4 RC5 и новее
-                query.addItem(new QueryItem("path", (section_id.equals("0") ? "" : section_id + ".")));
+                query.addItem("path", (section_id.equals("0") ? "" : section_id + "."));
             }
         } else { // Старше 1.2 beta
             String class_sections = "category";
@@ -736,8 +738,8 @@ public class Converter {
             } catch (Exception e) {
                 class_sections = "category";
             }
-            query.addItem(new QueryItem("section_id", section_id));
-            query.addItem(new QueryItem("class", class_sections));
+            query.addItem("section_id", section_id);
+            query.addItem("class", class_sections);
         }
         FpsData.add(query);
         return true;
@@ -757,19 +759,19 @@ public class Converter {
             id = 3 + mode;
         }
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-        query.addItem(new QueryItem("id", id));
-        query.addItem(new QueryItem("title", addslashes(uRecord[3])));
-        query.addItem(new QueryItem("announce", addslashes(uRecord[4])));
-        query.addItem(new QueryItem("view_on_home", "1"));
+        query.addItem("id", id);
+        query.addItem("title", addslashes(uRecord[3]));
+        query.addItem("announce", addslashes(uRecord[4]));
+        query.addItem("view_on_home", "1");
         if (VERSION > 3) { // 1.2 beta и новее
-            query.addItem(new QueryItem("parent_id", mode));
-            query.addItem(new QueryItem("no_access", ""));
+            query.addItem("parent_id", mode);
+            query.addItem("no_access", "");
             if (VERSION >= 8) { // 2.4 RC5 и новее
-                query.addItem(new QueryItem("path", mode + "."));
+                query.addItem("path", mode + ".");
             }
         } else { // Старше 1.2 beta
-            query.addItem(new QueryItem("section_id", mode));
-            query.addItem(new QueryItem("class", "category"));
+            query.addItem("section_id", mode);
+            query.addItem("class", "category");
         }
         FpsData.add(query);
         return true;
@@ -789,14 +791,14 @@ public class Converter {
             section_id = "0";
         }
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "stat_categories" : "stat_sections"));
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[5])));
-        query.addItem(new QueryItem("view_on_home", "1"));
+        query.addItem("id", uRecord[0]);
+        query.addItem("title", addslashes(uRecord[5]));
+        query.addItem("view_on_home", "1");
         if (VERSION > 3) { // 1.2 beta и новее
-            query.addItem(new QueryItem("parent_id", section_id));
-            query.addItem(new QueryItem("no_access", ""));
+            query.addItem("parent_id", section_id);
+            query.addItem("no_access", "");
             if (VERSION >= 8) { // 2.4 RC5 и новее
-                query.addItem(new QueryItem("path", (section_id.equals("0") ? "" : section_id + ".")));
+                query.addItem("path", (section_id.equals("0") ? "" : section_id + "."));
             }
         } else { // Старше 1.2 beta
             String class_sections = "category";
@@ -810,8 +812,8 @@ public class Converter {
             } catch (Exception e) {
                 class_sections = "category";
             }
-            query.addItem(new QueryItem("section_id", section_id));
-            query.addItem(new QueryItem("class", class_sections));
+            query.addItem("section_id", section_id);
+            query.addItem("class", class_sections);
         }
         FpsData.add(query);
         return true;
@@ -845,24 +847,24 @@ public class Converter {
         }
 
         InsertQuery query = new InsertQuery(PREF + "loads");
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[15])));
-        query.addItem(new QueryItem("main", addslashes(uRecord[32])));
-        query.addItem(new QueryItem("author_id", author_id));
-        query.addItem(new QueryItem("category_id", uRecord[2]));
-        query.addItem(new QueryItem("views", uRecord[13]));
-        query.addItem(new QueryItem("downloads", uRecord[14]));
-        query.addItem(new QueryItem("download", download));
-        query.addItem(new QueryItem("date", parseDate(uRecord[5])));
-        query.addItem(new QueryItem("comments", uRecord[8]));
-        query.addItem(new QueryItem("description", addslashes(uRecord[16])));
-        query.addItem(new QueryItem("sourse", uRecord[27]));
-        query.addItem(new QueryItem("sourse_email", uRecord[28]));
-        query.addItem(new QueryItem("sourse_site", uRecord[29]));
-        query.addItem(new QueryItem("commented", commented));
-        query.addItem(new QueryItem("available", available));
-        query.addItem(new QueryItem("view_on_home", "0"));
-        query.addItem(new QueryItem("on_home_top", on_home_top));
+        query.addItem("id", uRecord[0]);
+        query.addItem("title", addslashes(uRecord[15]));
+        query.addItem("main", addslashes(uRecord[32]));
+        query.addItem("author_id", author_id);
+        query.addItem("category_id", uRecord[2]);
+        query.addItem("views", uRecord[13]);
+        query.addItem("downloads", uRecord[14]);
+        query.addItem("download", download);
+        query.addItem("date", parseDate(uRecord[5]));
+        query.addItem("comments", uRecord[8]);
+        query.addItem("description", addslashes(uRecord[16]));
+        query.addItem("sourse", uRecord[27]);
+        query.addItem("sourse_email", uRecord[28]);
+        query.addItem("sourse_site", uRecord[29]);
+        query.addItem("commented", commented);
+        query.addItem("available", available);
+        query.addItem("view_on_home", "0");
+        query.addItem("on_home_top", on_home_top);
         if (VERSION > 3) { // 1.2 beta и новее
             long lsize = 0;
             try {
@@ -871,17 +873,17 @@ public class Converter {
                 lsize = 0;
             }
             if (VERSION >= 7) { // 2.2 RC1 и новее
-                query.addItem(new QueryItem("premoder", "confirmed"));
+                query.addItem("premoder", "confirmed");
             }
-            query.addItem(new QueryItem("download_url", uRecord[22]));
-            query.addItem(new QueryItem("download_url_size", lsize));
+            query.addItem("download_url", uRecord[22]);
+            query.addItem("download_url_size", lsize);
         } else { // Старше 1.2 beta
-            query.addItem(new QueryItem("section_id", uRecord[1]));
+            query.addItem("section_id", uRecord[1]);
             if (uRecord[22] != null && !uRecord[22].isEmpty()) {
                 InsertQuery query_add = new InsertQuery(PREF + "loads_add_content");
-                query_add.addItem(new QueryItem("field_id", "1"));
-                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
-                query_add.addItem(new QueryItem("content", uRecord[22]));
+                query_add.addItem("field_id", "1");
+                query_add.addItem("entity_id", uRecord[0]);
+                query_add.addItem("content", uRecord[22]);
                 FpsData.add(query_add);
             }
         }
@@ -922,19 +924,19 @@ public class Converter {
             author_id = "0";
         }
         InsertQuery query = new InsertQuery(PREF + "news");
-        query.addItem(new QueryItem("id", id));
-        query.addItem(new QueryItem("title", addslashes(uRecord[11])));
-        query.addItem(new QueryItem("main", addslashes(uRecord[13])));
-        query.addItem(new QueryItem("author_id", author_id));
-        query.addItem(new QueryItem("category_id", category_id));
-        query.addItem(new QueryItem("views", uRecord[16]));
-        query.addItem(new QueryItem("date", parseDate(uRecord[8])));
-        query.addItem(new QueryItem("comments", uRecord[9]));
-        query.addItem(new QueryItem("description", addslashes(uRecord[12])));
-        query.addItem(new QueryItem("commented", commented));
-        query.addItem(new QueryItem("available", available));
-        query.addItem(new QueryItem("view_on_home", "1"));
-        query.addItem(new QueryItem("on_home_top", on_home_top));
+        query.addItem("id", id);
+        query.addItem("title", addslashes(uRecord[11]));
+        query.addItem("main", addslashes(uRecord[13]));
+        query.addItem("author_id", author_id);
+        query.addItem("category_id", category_id);
+        query.addItem("views", uRecord[16]);
+        query.addItem("date", parseDate(uRecord[8]));
+        query.addItem("comments", uRecord[9]);
+        query.addItem("description", addslashes(uRecord[12]));
+        query.addItem("commented", commented);
+        query.addItem("available", available);
+        query.addItem("view_on_home", "1");
+        query.addItem("on_home_top", on_home_top);
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[15].split("\\|");
             if (files != null && files.length > 0) {
@@ -957,13 +959,13 @@ public class Converter {
                             }
                             if (exist) {
                                 InsertQuery query_add = new InsertQuery(PREF + "news_attaches");
-                                query_add.addItem(new QueryItem("entity_id", id));
-                                query_add.addItem(new QueryItem("user_id", author_id));
-                                query_add.addItem(new QueryItem("attach_number", i + 1));
-                                query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length()));
-                                query_add.addItem(new QueryItem("date", parseDate(uRecord[8])));
-                                query_add.addItem(new QueryItem("is_image", is_image));
+                                query_add.addItem("entity_id", id);
+                                query_add.addItem("user_id", author_id);
+                                query_add.addItem("attach_number", i + 1);
+                                query_add.addItem("filename", new_filename);
+                                query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length());
+                                query_add.addItem("date", parseDate(uRecord[8]));
+                                query_add.addItem("is_image", is_image);
                                 FpsData.add(query_add);
                             } else {
                                 System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
@@ -973,10 +975,10 @@ public class Converter {
                 }
             }
             if (VERSION >= 7) { // 2.2 RC1 и новее
-                query.addItem(new QueryItem("premoder", "confirmed"));
+                query.addItem("premoder", "confirmed");
             }
         } else { // Старше 1.2 beta
-            query.addItem(new QueryItem("section_id", mode));
+            query.addItem("section_id", mode);
         }
         FpsData.add(query);
         return true;
@@ -1010,17 +1012,17 @@ public class Converter {
             author_id = "0";
         }
         InsertQuery query = new InsertQuery(PREF + "news");
-        query.addItem(new QueryItem("id", id));
-        query.addItem(new QueryItem("title", addslashes(uRecord[10])));
-        query.addItem(new QueryItem("main", addslashes(uRecord[12])));
-        query.addItem(new QueryItem("author_id", author_id));
-        query.addItem(new QueryItem("category_id", category_id));
-        query.addItem(new QueryItem("date", parseDate(uRecord[4])));
-        query.addItem(new QueryItem("description", addslashes(uRecord[11])));
-        query.addItem(new QueryItem("sourse", uRecord[14]));
-        query.addItem(new QueryItem("sourse_email", uRecord[15]));
-        query.addItem(new QueryItem("available", available));
-        query.addItem(new QueryItem("view_on_home", "1"));
+        query.addItem("id", id);
+        query.addItem("title", addslashes(uRecord[10]));
+        query.addItem("main", addslashes(uRecord[12]));
+        query.addItem("author_id", author_id);
+        query.addItem("category_id", category_id);
+        query.addItem("date", parseDate(uRecord[4]));
+        query.addItem("description", addslashes(uRecord[11]));
+        query.addItem("sourse", uRecord[14]);
+        query.addItem("sourse_email", uRecord[15]);
+        query.addItem("available", available);
+        query.addItem("view_on_home", "1");
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[17].split("\\|");
             if (files != null && files.length > 0) {
@@ -1042,13 +1044,13 @@ public class Converter {
                             }
                             if (exist) {
                                 InsertQuery query_add = new InsertQuery(PREF + "news_attaches");
-                                query_add.addItem(new QueryItem("entity_id", id));
-                                query_add.addItem(new QueryItem("user_id", author_id));
-                                query_add.addItem(new QueryItem("attach_number", i + 1));
-                                query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length()));
-                                query_add.addItem(new QueryItem("date", parseDate(uRecord[4])));
-                                query_add.addItem(new QueryItem("is_image", is_image));
+                                query_add.addItem("entity_id", id);
+                                query_add.addItem("user_id", author_id);
+                                query_add.addItem("attach_number", i + 1);
+                                query_add.addItem("filename", new_filename);
+                                query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "news" + DS + new_filename).length());
+                                query_add.addItem("date", parseDate(uRecord[4]));
+                                query_add.addItem("is_image", is_image);
                                 FpsData.add(query_add);
                             } else {
                                 System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
@@ -1058,10 +1060,10 @@ public class Converter {
                 }
             }
             if (VERSION >= 7) { // 2.2 RC1 и новее
-                query.addItem(new QueryItem("premoder", "confirmed"));
+                query.addItem("premoder", "confirmed");
             }
         } else { // Старше 1.2 beta
-            query.addItem(new QueryItem("section_id", "3"));
+            query.addItem("section_id", "3");
         }
         FpsData.add(query);
         return true;
@@ -1085,22 +1087,22 @@ public class Converter {
             author_id = "0";
         }
         InsertQuery query = new InsertQuery(PREF + "stat");
-        query.addItem(new QueryItem("id", uRecord[0]));
-        query.addItem(new QueryItem("title", addslashes(uRecord[13])));
-        query.addItem(new QueryItem("main", addslashes(uRecord[20])));
-        query.addItem(new QueryItem("author_id", author_id));
-        query.addItem(new QueryItem("category_id", uRecord[2]));
-        query.addItem(new QueryItem("views", uRecord[21]));
-        query.addItem(new QueryItem("date", parseDate(uRecord[5])));
-        query.addItem(new QueryItem("comments", uRecord[8]));
-        query.addItem(new QueryItem("description", addslashes(uRecord[14])));
-        query.addItem(new QueryItem("sourse", uRecord[16]));
-        query.addItem(new QueryItem("sourse_email", uRecord[17]));
-        query.addItem(new QueryItem("sourse_site", uRecord[18]));
-        query.addItem(new QueryItem("commented", commented));
-        query.addItem(new QueryItem("available", available));
-        query.addItem(new QueryItem("view_on_home", "1"));
-        query.addItem(new QueryItem("on_home_top", on_home_top));
+        query.addItem("id", uRecord[0]);
+        query.addItem("title", addslashes(uRecord[13]));
+        query.addItem("main", addslashes(uRecord[20]));
+        query.addItem("author_id", author_id);
+        query.addItem("category_id", uRecord[2]);
+        query.addItem("views", uRecord[21]);
+        query.addItem("date", parseDate(uRecord[5]));
+        query.addItem("comments", uRecord[8]);
+        query.addItem("description", addslashes(uRecord[14]));
+        query.addItem("sourse", uRecord[16]);
+        query.addItem("sourse_email", uRecord[17]);
+        query.addItem("sourse_site", uRecord[18]);
+        query.addItem("commented", commented);
+        query.addItem("available", available);
+        query.addItem("view_on_home", "1");
+        query.addItem("on_home_top", on_home_top);
         if (VERSION > 3) { // 1.2 beta и новее
             String[] files = uRecord[24].split("\\|");
             if (files != null && files.length > 0) {
@@ -1122,13 +1124,13 @@ public class Converter {
                             }
                             if (exist) {
                                 InsertQuery query_add = new InsertQuery(PREF + "stat_attaches");
-                                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
-                                query_add.addItem(new QueryItem("user_id", author_id));
-                                query_add.addItem(new QueryItem("attach_number", i + 1));
-                                query_add.addItem(new QueryItem("filename", new_filename));
-                                query_add.addItem(new QueryItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "stat" + DS + new_filename).length()));
-                                query_add.addItem(new QueryItem("date", parseDate(uRecord[5])));
-                                query_add.addItem(new QueryItem("is_image", is_image));
+                                query_add.addItem("entity_id", uRecord[0]);
+                                query_add.addItem("user_id", author_id);
+                                query_add.addItem("attach_number", i + 1);
+                                query_add.addItem("filename", new_filename);
+                                query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "stat" + DS + new_filename).length());
+                                query_add.addItem("date", parseDate(uRecord[5]));
+                                query_add.addItem("is_image", is_image);
                                 FpsData.add(query_add);
                             } else {
                                 System.out.println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
@@ -1138,20 +1140,20 @@ public class Converter {
                 }
             }
             if (VERSION >= 7) { // 2.2 RC1 и новее
-                query.addItem(new QueryItem("premoder", "confirmed"));
+                query.addItem("premoder", "confirmed");
             }
         } else { // Старше 1.2 beta
-            query.addItem(new QueryItem("section_id", uRecord[1]));
+            query.addItem("section_id", uRecord[1]);
         }
         if (uRecord[22] != null && !uRecord[22].isEmpty()) {
             if (VERSION < 10) { // Старше AtomM 4
                 InsertQuery query_add = new InsertQuery(PREF + "stat_add_content");
-                query_add.addItem(new QueryItem("field_id", "1"));
-                query_add.addItem(new QueryItem("entity_id", uRecord[0]));
-                query_add.addItem(new QueryItem("content", uRecord[19]));
+                query_add.addItem("field_id", "1");
+                query_add.addItem("entity_id", uRecord[0]);
+                query_add.addItem("content", uRecord[19]);
                 FpsData.add(query_add);
             } else { // AtomM 4 и новее
-                query.addItem(new QueryItem("add_field_1", uRecord[19]));
+                query.addItem("add_field_1", uRecord[19]);
             }
         }
         FpsData.add(query);
@@ -1197,25 +1199,25 @@ public class Converter {
             column = columnName[moduleID];
         }
         InsertQuery query = new InsertQuery(PREF + (VERSION < 6 ? tableName[moduleID] : "comments"));
-        query.addItem(new QueryItem(column, entity_id));
-        query.addItem(new QueryItem("name", name));
-        query.addItem(new QueryItem("message", addslashes((VERSION > 2 ? "" : "[" + parseDateToString(uRecord[4]) + "]: ") + uRecord[10])));
-        query.addItem(new QueryItem("ip", uRecord[9]));
-        query.addItem(new QueryItem("mail", uRecord[7]));
+        query.addItem(column, entity_id);
+        query.addItem("name", name);
+        query.addItem("message", addslashes((VERSION > 2 ? "" : "[" + parseDateToString(uRecord[4]) + "]: ") + uRecord[10]));
+        query.addItem("ip", uRecord[9]);
+        query.addItem("mail", uRecord[7]);
         if (VERSION > 2) { // 1.1.9 и новее
-            query.addItem(new QueryItem("date", parseDate(uRecord[4])));
+            query.addItem("date", parseDate(uRecord[4]));
         }
         if (VERSION > 4) { // 1.3 RC и новее
-            query.addItem(new QueryItem("user_id", uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0"));
+            query.addItem("user_id", uRecord[12] != null && !uRecord[12].isEmpty() ? uRecord[12] : "0");
         }
         if (VERSION >= 6) { // 2.1 RC7 и новее
-            query.addItem(new QueryItem("module", moduleName[moduleID]));
+            query.addItem("module", moduleName[moduleID]);
         }
         if (VERSION >= 9) { // 2.5 RC1 и новее
-            query.addItem(new QueryItem("premoder", "confirmed"));
+            query.addItem("premoder", "confirmed");
         }
         if (VERSION >= 10) { // AtomM 4 и новее
-            query.addItem(new QueryItem("parent_id", uRecord[13] != null && !uRecord[13].isEmpty() ? uRecord[13] : "0"));
+            query.addItem("parent_id", uRecord[13] != null && !uRecord[13].isEmpty() ? uRecord[13] : "0");
         }
         FpsData.add(query);
         return true;
@@ -1300,31 +1302,31 @@ public class Converter {
         }
 
         InsertQuery query = new InsertQuery(PREF + "users");
-        query.addItem(new QueryItem("id", (String) uUsers.get(uRecord[0])));
-        query.addItem(new QueryItem("name", addslashes(uRecord[0])));
-        query.addItem(new QueryItem("passw", addslashes(uRecord[2])));
-        query.addItem(new QueryItem("email", addslashes(uRecord[7])));
-        query.addItem(new QueryItem("url", addslashes(uRecord[8])));
-        query.addItem(new QueryItem("icq", addslashes(uRecord[9])));
-        query.addItem(new QueryItem("signature", addslashes(uRecord[13])));
-        query.addItem(new QueryItem("puttime", parseDate(uRecord[15])));
-        query.addItem(new QueryItem("last_visit", parseDate(last_visit)));
-        query.addItem(new QueryItem("posts", posts));
-        query.addItem(new QueryItem("status", status));
-        query.addItem(new QueryItem("locked", locked));
-        query.addItem(new QueryItem("activation", activation));
+        query.addItem("id", (String) uUsers.get(uRecord[0]));
+        query.addItem("name", addslashes(uRecord[0]));
+        query.addItem("passw", addslashes(uRecord[2]));
+        query.addItem("email", addslashes(uRecord[7]));
+        query.addItem("url", addslashes(uRecord[8]));
+        query.addItem("icq", addslashes(uRecord[9]));
+        query.addItem("signature", addslashes(uRecord[13]));
+        query.addItem("puttime", parseDate(uRecord[15]));
+        query.addItem("last_visit", parseDate(last_visit));
+        query.addItem("posts", posts);
+        query.addItem("status", status);
+        query.addItem("locked", locked);
+        query.addItem("activation", activation);
         if (VERSION > 1) { // 1.1.8 beta и новее
-            query.addItem(new QueryItem("warnings", "0"));
-            query.addItem(new QueryItem("ban_expire", "0"));
+            query.addItem("warnings", "0");
+            query.addItem("ban_expire", "0");
         }
         if (VERSION > 2) { // 1.1.9 и новее
-            query.addItem(new QueryItem("pol", (uRecord[6].equals("2") ? "f" : "m")));
-            query.addItem(new QueryItem("jabber", ""));
-            query.addItem(new QueryItem("city", addslashes(uRecord[12])));
-            query.addItem(new QueryItem("telephone", ""));
-            query.addItem(new QueryItem("byear", byear));
-            query.addItem(new QueryItem("bmonth", bmonth));
-            query.addItem(new QueryItem("bday", bday));
+            query.addItem("pol", (uRecord[6].equals("2") ? "f" : "m"));
+            query.addItem("jabber", "");
+            query.addItem("city", addslashes(uRecord[12]));
+            query.addItem("telephone", "");
+            query.addItem("byear", byear);
+            query.addItem("bmonth", bmonth);
+            query.addItem("bday", bday);
         }
         FpsData.add(query);
         return true;
@@ -1469,12 +1471,12 @@ public class Converter {
                     }
                     if (VERSION <= 3) { // Старше 1.2 beta
                         InsertQuery query = new InsertQuery(PREF + "loads_add_fields");
-                        query.addItem(new QueryItem("id", "1"));
-                        query.addItem(new QueryItem("type", "text"));
-                        query.addItem(new QueryItem("name", ""));
-                        query.addItem(new QueryItem("label", "Ссылка для скачивания архива с другого сервера"));
-                        query.addItem(new QueryItem("size", "255"));
-                        query.addItem(new QueryItem("params", "a:0:{}"));
+                        query.addItem("id", "1");
+                        query.addItem("type", "text");
+                        query.addItem("name", "");
+                        query.addItem("label", "Ссылка для скачивания архива с другого сервера");
+                        query.addItem("size", "255");
+                        query.addItem("params", "a:0:{}");
                         emptySql.add(query);
                     }
                     // Инициализация папки для работы с файлами
@@ -1508,18 +1510,18 @@ public class Converter {
                         emptySql.add(new TruncateQuery(PREF + "stat"));
                     }
                     InsertQuery query = new InsertQuery(PREF + "add_fields");
-                    query.addItem(new QueryItem("id", "1"));
-                    query.addItem(new QueryItem("type", "text"));
-                    query.addItem(new QueryItem("size", "255"));
-                    query.addItem(new QueryItem("params", "a:0:{}"));
+                    query.addItem("id", "1");
+                    query.addItem("type", "text");
+                    query.addItem("size", "255");
+                    query.addItem("params", "a:0:{}");
                     if (VERSION < 10) { // Старше AtomM 4
-                        query.addItem(new QueryItem("name", "link"));
-                        query.addItem(new QueryItem("label", "Ссылка на источник материала"));
+                        query.addItem("name", "link");
+                        query.addItem("label", "Ссылка на источник материала");
                         query.setTable(PREF + "stat_add_fields");
                     } else {
-                        query.addItem(new QueryItem("label", "link"));
-                        query.addItem(new QueryItem("field_id", "1"));
-                        query.addItem(new QueryItem("module", "stat"));
+                        query.addItem("label", "link");
+                        query.addItem("field_id", "1");
+                        query.addItem("module", "stat");
                     }
                     emptySql.add(query);
                     if (VERSION > 2) { // 1.1.9 и новее
@@ -1653,19 +1655,19 @@ public class Converter {
                 if (uTables[i].equals("nw_nw") || uTables[i].equals("news")) {
                     if (!addNews) {
                         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "1"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                        query.addItem(new QueryItem("title", "Новости"));
+                        query.addItem("id", "1");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0");
+                        query.addItem("title", "Новости");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "section"));
+                            query.addItem("class", "section");
                         }
                         emptySql.add(query);
                         query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "4"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1"));
-                        query.addItem(new QueryItem("title", "Без категории"));
+                        query.addItem("id", "4");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "1");
+                        query.addItem("title", "Без категории");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "category"));
+                            query.addItem("class", "category");
                         }
                         emptySql.add(query);
                         addNews = true;
@@ -1673,19 +1675,19 @@ public class Converter {
                 } else if (uTables[i].equals("bl_bl") || uTables[i].equals("blog")) {
                     if (!addBlog) {
                         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "2"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                        query.addItem(new QueryItem("title", "Блоги"));
+                        query.addItem("id", "2");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0");
+                        query.addItem("title", "Блоги");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "section"));
+                            query.addItem("class", "section");
                         }
                         emptySql.add(query);
                         query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "5"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2"));
-                        query.addItem(new QueryItem("title", "Без категории"));
+                        query.addItem("id", "5");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "2");
+                        query.addItem("title", "Без категории");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "category"));
+                            query.addItem("class", "category");
                         }
                         emptySql.add(query);
                         addBlog = true;
@@ -1693,19 +1695,19 @@ public class Converter {
                 } else if (uTables[i].equals("fq_fq") || uTables[i].equals("faq")) {
                     if (!addFAQ) {
                         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "3"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0"));
-                        query.addItem(new QueryItem("title", "FAQ"));
+                        query.addItem("id", "3");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "0");
+                        query.addItem("title", "FAQ");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "section"));
+                            query.addItem("class", "section");
                         }
                         emptySql.add(query);
                         query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
-                        query.addItem(new QueryItem("id", "6"));
-                        query.addItem(new QueryItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3"));
-                        query.addItem(new QueryItem("title", "Без категории"));
+                        query.addItem("id", "6");
+                        query.addItem((VERSION > 3 ? "`parent_id`" : "`section_id`"), "3");
+                        query.addItem("title", "Без категории");
                         if (VERSION <= 3) {
-                            query.addItem(new QueryItem("class", "category"));
+                            query.addItem("class", "category");
                         }
                         emptySql.add(query);
                         addFAQ = true;
