@@ -122,7 +122,7 @@ public class Main {
                 ArrayList temp = conv.getSQL(uTables[i]);
                 if (temp != null) {
                     if (sqlSplit) {
-                        String filename = "atomx_" + uFiles[i] + ".sql";
+                        String filename = "atomm_" + uFiles[i] + ".sql";
                         System.out.println("Save \"" + filename + "\"...");
                         createFile(filename, temp);
                     } else {
@@ -131,8 +131,8 @@ public class Main {
                 }
             }
             if (FpsData != null) {
-                System.out.println("Save \"atomx.sql\"...");
-                createFile("atomx.sql", FpsData);
+                System.out.println("Save \"atomm.sql\"...");
+                createFile("atomm.sql", FpsData);
             }
         }
     }

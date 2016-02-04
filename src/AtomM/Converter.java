@@ -1496,13 +1496,14 @@ public class Converter {
                     InsertQuery query = new InsertQuery(PREF + "add_fields");
                     query.addItem(new QueryItem("id", "1"));
                     query.addItem(new QueryItem("type", "text"));
-                    query.addItem(new QueryItem("name", "link"));
-                    query.addItem(new QueryItem("label", "Ссылка на источник материала"));
                     query.addItem(new QueryItem("size", "255"));
                     query.addItem(new QueryItem("params", "a:0:{}"));
                     if (VERSION < 10) { // Старше AtomM 4
+                        query.addItem(new QueryItem("name", "link"));
+                        query.addItem(new QueryItem("label", "Ссылка на источник материала"));
                         query.setTable(PREF + "stat_add_fields");
                     } else {
+                        query.addItem(new QueryItem("label", "link"));
                         query.addItem(new QueryItem("field_id", "1"));
                         query.addItem(new QueryItem("module", "stat"));
                     }
