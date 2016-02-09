@@ -310,6 +310,34 @@ public class Converter {
     }
 
     /**
+     * Проверка на существование каталога и его создание при отсуствии.
+     *
+     * @param path путь к каталогу;
+     * @param error текст ошибки.
+     * @return <tt>true</tt> если каталог создан или существует, иначе <tt>false</tt>.
+     */
+    private boolean createDir(String path, String error, boolean needAccessFile) {
+        try {
+            File dir = new File(path);
+            if (dir.exists()) {
+                if (!dir.isDirectory()) {
+                    println("WARNING: Path \"" + path + "\" is not directory. " + error);
+                    return false;
+                }
+            } else {
+                dir.mkdirs();
+            }
+            if (needAccessFile) {
+                createAccessFile(path);
+            }
+        } catch (Exception e) {
+            println("WARNING: Path \"" + path + "\" can't created. " + error);
+            return false;
+        }
+        return true;
+    } 
+    
+    /**
      * Создание файла ".htaccess" (с разрешением качать всем) в заданном
      * каталоге.
      *
@@ -2249,127 +2277,42 @@ public class Converter {
                 }
                 if (uTables[i][j].equals("users")) {
                     // Инициализация папки для работы с аватарами
-                    try {
-                        File outputAvatarsDir = new File("avatars");
-                        if (outputAvatarsDir.exists()) {
-                            if (!outputAvatarsDir.isDirectory()) {
-                                println("WARNING: Path \"avatars\" is not directory. Avatars not supported.");
-                            }
-                        } else {
-                            try {
-                                outputAvatarsDir.mkdirs();
-                            } catch (Exception e) {
-                                println("WARNING: Path \"avatars\" can't created. Avatars not supported.");
-                            }
-                        }
-                    } catch (Exception e) {
-                        println("WARNING: Path \"avatars\" can't created. Avatars not supported.");
-                    }
+                    createDir("avatars", "Avatars not supported.", true);
                 } else if (uTables[i][j].equals("fr_fr") || uTables[i][j].equals("forum") || uTables[i][j].equals("forump")) {
                     // Инициализация папок для работы с вложениями
                     uForumAttachDir = new ArrayList();
-                    try {
-                        File attachDir = new File(FORUM_ATTACH_TABLES);
-                        if (attachDir.exists()) {
-                            String[] attach_cats = attachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[k] + DS);
-                            }
-                            File outputForumDir = new File("files" + DS + "forum");
-                            if (outputForumDir.exists()) {
-                                if (!outputForumDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "forum\" is not directory. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputForumDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "forum\" can't created. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            }
-                            outputForumDir = new File("images" + DS + "forum");
-                            if (outputForumDir.exists()) {
-                                if (!outputForumDir.isDirectory()) {
-                                    println("WARNING: Path \"images" + DS + "forum\" is not directory. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputForumDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"images" + DS + "forum\" can't created. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            }
-                        } else {
-                            println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                    File attachDir = new File(FORUM_ATTACH_TABLES);
+                    if (attachDir.exists()) {
+                        String[] attach_cats = attachDir.list();
+                        for (int k = 0; k < attach_cats.length; k++) {
+                            uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[k] + DS);
                         }
-                    } catch (Exception e) {
+                        if (!createDir("files" + DS + "forum", "Attachments for forum not supported.", true)
+                                || !createDir("images" + DS + "forum", "Attachments for forum not supported.", true)) {
+                            uForumAttachDir.clear();
+                        }
+                    } else {
+                        println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments for forum not supported.");
                     }
                 } else if (uTables[i][j].equals("ld_ld") || uTables[i][j].equals("loads")) {
                     // Инициализация папки для работы с файлами
-                    try {
-                        File outputLoadsDir = new File("files" + DS + "loads");
-                        if (outputLoadsDir.exists()) {
-                            if (!outputLoadsDir.isDirectory()) {
-                                println("WARNING: Path \"files" + DS + "loads\" is not directory. Loads not supported.");
-                            }
-                        } else {
-                            try {
-                                outputLoadsDir.mkdirs();
-                            } catch (Exception e) {
-                                println("WARNING: Path \"files" + DS + "loads\" can't created. Loads not supported.");
-                            }
-                        }
-                    } catch (Exception e) {
-                        println("WARNING: Path \"files" + DS + "loads\" is not directory. Loads not supported.");
-                    }
+                    createDir("files" + DS + "loads", "Loads not supported.", false);
                 } else if (uTables[i][j].equals("pu_pu") || uTables[i][j].equals("publ")) {
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
                         uStatAttachDir = new ArrayList();
-                        try {
-                            File attachDir = new File(PUBL_ATTACH_TABLES);
-                            if (attachDir.exists()) {
-                                String[] attach_cats = attachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                                File outputStatDir = new File("files" + DS + "stat");
-                                if (outputStatDir.exists()) {
-                                    if (!outputStatDir.isDirectory()) {
-                                        println("WARNING: Path \"files" + DS + "stat\" is not directory. Attachments for publication not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                } else {
-                                    try {
-                                        outputStatDir.mkdirs();
-                                    } catch (Exception e) {
-                                        println("WARNING: Path \"files" + DS + "stat\" can't created. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                }
-                                outputStatDir = new File("images" + DS + "stat");
-                                if (outputStatDir.exists()) {
-                                    if (!outputStatDir.isDirectory()) {
-                                        println("WARNING: Path \"images" + DS + "stat\" is not directory. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                } else {
-                                    try {
-                                        outputStatDir.mkdirs();
-                                    } catch (Exception e) {
-                                        println("WARNING: Path \"images" + DS + "stat\" can't created. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                }
-                            } else {
-                                println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                        File attachDir = new File(PUBL_ATTACH_TABLES);
+                        if (attachDir.exists()) {
+                            String[] attach_cats = attachDir.list();
+                            for (int k = 0; k < attach_cats.length; k++) {
+                                uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[k] + DS);
                             }
-                        } catch (Exception e) {
-                            println("WARNING: Path \"files" + DS + "stat\" can't created. Attachments for publication not supported.");
+                            if (!createDir("files" + DS + "stat", "Attachments for publication not supported.", true)
+                                    || !createDir("images" + DS + "stat", "Attachments for publication not supported.", true)) {
+                                uStatAttachDir.clear();
+                            }
+                        } else {
+                            println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments for publication not supported.");
                         }
                     }
                 } else if (uTables[i][j].equals("nw_nw") || uTables[i][j].equals("bl_bl") || uTables[i][j].equals("fq_fq")
@@ -2379,73 +2322,37 @@ public class Converter {
                         uNewsAttachDir = new ArrayList();
                         uBlogAttachDir = new ArrayList();
                         uFaqAttachDir = new ArrayList();
-                        try {
-                            File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                            if (newsAttachDir.exists()) {
-                                String[] attach_cats = newsAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                        File newsAttachDir = new File(NEWS_ATTACH_TABLES);
+                        if (newsAttachDir.exists()) {
+                            String[] attach_cats = newsAttachDir.list();
+                            for (int k = 0; k < attach_cats.length; k++) {
+                                uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[k] + DS);
                             }
-                            File blogAttachDir = new File(BLOG_ATTACH_TABLES);
-                            if (blogAttachDir.exists()) {
-                                String[] attach_cats = blogAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                        } else {
+                            println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments for news not supported.");
+                        }
+                        File blogAttachDir = new File(BLOG_ATTACH_TABLES);
+                        if (blogAttachDir.exists()) {
+                            String[] attach_cats = blogAttachDir.list();
+                            for (int k = 0; k < attach_cats.length; k++) {
+                                uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[k] + DS);
                             }
-                            File faqAttachDir = new File(FAQ_ATTACH_TABLES);
-                            if (faqAttachDir.exists()) {
-                                String[] attach_cats = faqAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments not supported.");
+                        } else {
+                            println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blog not supported.");
+                        }
+                        File faqAttachDir = new File(FAQ_ATTACH_TABLES);
+                        if (faqAttachDir.exists()) {
+                            String[] attach_cats = faqAttachDir.list();
+                            for (int k = 0; k < attach_cats.length; k++) {
+                                uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[k] + DS);
                             }
-                            // Результирующая папка
-                            File outputNewsDir = new File("files" + DS + "news");
-                            if (outputNewsDir.exists()) {
-                                if (!outputNewsDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputNewsDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            }
-                            outputNewsDir = new File("images" + DS + "news");
-                            if (outputNewsDir.exists()) {
-                                if (!outputNewsDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputNewsDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            }
-                        } catch (Exception e) {
-                            println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments for news not supported.");
+                        } else {
+                            println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQ not supported.");
+                        }
+                        // Результирующая папка
+                        if (!createDir("files" + DS + "news", "Attachments for news not supported.", true)
+                                || !createDir("images" + DS + "news", "Attachments for news not supported.", true)) {
+                            uStatAttachDir.clear();
                         }
                     }
                 }
