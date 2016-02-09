@@ -1,5 +1,6 @@
 package AtomM;
 
+import AtomM.GUI.FConverter;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -8,26 +9,7 @@ public class Main {
 
     static int CURRENT_VERSION = 11;
 
-    private static void createFile(String filename, ArrayList data) {
-        try {
-            OutputStreamWriter buf = new OutputStreamWriter(new FileOutputStream(filename), "UTF-8");
-            for (int i = 0; i < data.size(); i++) {
-                Object item = data.get(i);
-                if (item == null) {
-                    continue;
-                }
-                String str = item instanceof String ? (String) item : item.toString();
-                buf.write(str + "\r\n");
-            }
-            buf.flush();
-            buf.close();
-        } catch (Exception e) {
-            System.out.println("File \"" + filename + "\" not saved (" + e.getMessage() + ").");
-        }
-    }
-
     public static void main(String[] args) {
-        System.out.println("JConvertor v0.5");
         String path = ".";
         String pref = "";
         String site_old = null;
@@ -103,47 +85,19 @@ public class Main {
             }
         }
 
-        String[] uFiles = new String[]{"users", "forum", "loads", "stat", "news", "comments"};
-
-        Converter conv = new Converter(path, pref);
+        FConverter conv = new FConverter();
+        conv.setPath(path);
+        conv.setPref(pref);
         conv.setPassword(password);
         conv.setWebAvatars(useWebAvatars);
         conv.setNoEmpty(noEmpty);
         conv.setNoImage(noImage);
         conv.setSmile(parseSmile);
         conv.setSiteName(site_old, site_new, postOnForum);
+        conv.setParse(parseAll, parse);
+        conv.setSplit(sqlSplit);
         conv.setNoFix(noFix);
         conv.setVersion(version);
-
-        System.out.println("Stage 1: loading backup files...");
-        if (conv != null && conv.initUsers()) {
-            conv.loadBackups(parseAll, parse);
-            System.out.println("Stage 2: copying files and updating links...");
-            conv.linksUpdate();
-            System.out.println("Stage 3: parsing backup...");
-            ArrayList atmData = null;
-            if (!sqlSplit) {
-                atmData = new ArrayList();
-            }
-            ArrayList temp = conv.getSQL();
-            if (temp != null) {
-                for (int i = 0; i < temp.size(); i++) {
-                    if ((!parseAll && !parse[i]) || temp.get(i) == null) {
-                        continue;
-                    }
-                    if (sqlSplit) {
-                        String filename = "atomm_" + uFiles[i] + ".sql";
-                        System.out.println("Save \"" + filename + "\"...");
-                        createFile(filename, (ArrayList) temp.get(i));
-                    } else {
-                        atmData.addAll((ArrayList) temp.get(i));
-                    }
-                }
-            }
-            if (atmData != null) {
-                System.out.println("Save \"atomm.sql\"...");
-                createFile("atomm.sql", atmData);
-            }
-        }
+        conv.setVisible(true);
     }
 }

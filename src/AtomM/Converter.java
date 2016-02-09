@@ -1,5 +1,6 @@
 package AtomM;
 
+import AtomM.GUI.DLog;
 import AtomM.SQL.InsertQuery;
 import AtomM.SQL.TruncateQuery;
 import java.awt.Transparency;
@@ -68,6 +69,8 @@ public class Converter {
 
     private ArrayList<ArrayList> atmData = null;
     
+    private DLog log = null;
+
     private TreeMap uUsers = null;
     private TreeMap uUsersMeta = null;
     private TreeMap uThemes = null;
@@ -104,7 +107,11 @@ public class Converter {
 
     private TreeMap uLinks = null;
 
-        public void setPassword(String PASSWORD) {
+    public void setLog(DLog log) {
+        this.log = log;
+    }
+
+    public void setPassword(String PASSWORD) {
         this.PASSWORD = PASSWORD;
     }
 
@@ -204,8 +211,12 @@ public class Converter {
      *
      * @param output строка для вывода в консоль
      */
-    public static void println(String output) {
-        System.out.println(output);
+    public void println(String output) {
+        if (log != null) {
+            log.println(output);
+        } else {
+            System.out.println(output);
+        }
     }
 
     /**
@@ -1899,6 +1910,9 @@ public class Converter {
         atmData = new ArrayList<ArrayList>();
         for (int i = 0; i < uTables.length; i++) {
             atmData.add(new ArrayList());
+            if (log != null) {
+                log.setProgress(log.getProgress() + 1);
+            }
         }
 
         for (int i = 0; i < uTables.length; i++) {
@@ -2243,6 +2257,7 @@ public class Converter {
     public void linksUpdate() {
         uForumThread = new TreeMap();
         for (int i = 0; i < uTables.length; i++) {
+            log.setProgress(log.getProgress() + 1);
             for (int j = 0; j < uTables[i].length; j++) {
                 if (uData[i][j] == null) {
                     continue;
@@ -2574,6 +2589,7 @@ public class Converter {
         boolean addFAQ = false;
         for (int i = 0; i < uTables.length; i++) {
             ArrayList emptySql = new ArrayList();
+            log.setProgress(log.getProgress() + 1);
             for (int j = 0; j < uTables[i].length; j++) {
                 if (uData[i][j] == null) {
                     continue;
