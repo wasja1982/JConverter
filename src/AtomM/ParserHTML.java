@@ -1,6 +1,7 @@
 package AtomM;
 
 import java.util.Stack;
+import java.util.TreeMap;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
@@ -10,6 +11,7 @@ public class ParserHTML extends DefaultHandler {
 
     public String text = "";
     public boolean parseSmile = false;
+    public TreeMap uLinks = null;
     public Stack span = new Stack();
     public Stack div = new Stack();
 
@@ -84,6 +86,11 @@ public class ParserHTML extends DefaultHandler {
                 text += "[list=1]";
             } else if (qName.equalsIgnoreCase("img")) {
                 boolean change = false;
+                String key = "";
+                if (attr.getValue("src") != null) {
+                    key = attr.getValue("src");
+                }
+                String value = (uLinks != null) ? (String) uLinks.get(key) : null;
                 if (parseSmile) {
                     if (attr.getValue("alt") != null) {
                         for (int i = 0; i < smile.length; i++) {
@@ -94,11 +101,17 @@ public class ParserHTML extends DefaultHandler {
                             }
                         }
                     }
-                    if (!change && attr.getValue("src") != null) {
-                        text += "[img]" + attr.getValue("src") + "[/img]";
+                    if (!change) {
+                        if (value != null) {
+                            text += "[img]" + value + "[/img]";
+                        } else {
+                            text += "[img]" + key + "[/img]";
+                        }
                     }
-                } else if (attr.getValue("src") != null) {
-                    text += "[img]" + attr.getValue("src") + "[/img]";
+                } else if (value != null) {
+                    text += "[img]" + value + "[/img]";
+                } else {
+                    text += "[img]" + key + "[/img]";
                 }
             } else if (qName.equalsIgnoreCase("span")) {
                 String style = attr.getValue("style");
@@ -164,8 +177,17 @@ public class ParserHTML extends DefaultHandler {
                         div.push(3);
                     }
                 }
-            } else if (qName.equalsIgnoreCase("a") && attr.getValue("href") != null) {
-                text += "[url=" + attr.getValue("href") + "]";
+            } else if (qName.equalsIgnoreCase("a")) {
+                String key = "";
+                if (attr.getValue("href") != null) {
+                    key = attr.getValue("href");
+                }
+                String value = (uLinks != null) ? (String) uLinks.get(key) : null;
+                if (value != null) {
+                    text += "[url=" + value + "]";
+                } else {
+                    text += "[url=" + key + "]";
+                }
             }
         } catch (Exception e) {
             System.out.println(e.toString());
