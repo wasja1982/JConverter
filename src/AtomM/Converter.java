@@ -69,8 +69,8 @@ public class Converter {
     private ArrayList<ArrayList> atmData = null;
     
     private TreeMap uUsers = null;
-    private TreeMap uUsersMeta = null;
-    private TreeMap uThemes = null;
+    private TreeMap<String, String[]> uUsersMeta = null;
+    private TreeMap<String, String[]> uThemesMeta = null;
     private ArrayList uForumAttachDir = null;
     private ArrayList uNewsAttachDir = null;
     private ArrayList uBlogAttachDir = null;
@@ -79,8 +79,7 @@ public class Converter {
 
     private ArrayList uLoadsCat = null;
     private ArrayList uForumCat = null;
-    private ArrayList uForumPost = null;
-    private TreeMap uForumThread = null;
+    private ArrayList<String> uForumPost = null;
 
     private ArrayList[][] uData = {{null},
     {null, null, null},
@@ -360,6 +359,45 @@ public class Converter {
         }
     }
 
+    /**
+     * Модификация ссылок.
+     *
+     * @param old_path старый путь (относительный или полный);
+     * @param new_path новый путь (если null, то ссылка удаляется из списка).
+     * @return <tt>true</tt> если файл создан, иначе <tt>false</tt>.
+     */
+    private void updateLink(String old_path, String new_path) {
+        if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
+            String new_url = (new_path != null && !new_path.isEmpty()) ? new_path.replace(DS, "/") : "";
+            new_url = SITE_NAME_NEW.toLowerCase() + (new_url.isEmpty() || new_url.startsWith("/") ? "" : "/" + new_url);
+            if (old_path.toLowerCase().startsWith("http://") || old_path.toLowerCase().startsWith("https://")) {
+                if (uLinks.containsKey(old_path)) {
+                    if (new_path != null && !new_path.isEmpty()) {
+                        uLinks.remove(old_path);
+                    } else {
+                        uLinks.put(old_path, new_url);
+                    }
+                }
+            } else {
+                String old_url = (old_path != null && !old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
+                old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/" + old_url);
+                String[] keys = {
+                    "http://" + SITE_NAME_OLD.toLowerCase() + old_url,
+                    "http://" + SITE_NAME_OLD.toLowerCase() + old_url + "/",
+                    "http://www." + SITE_NAME_OLD.toLowerCase() + old_url,
+                    "http://www." + SITE_NAME_OLD.toLowerCase() + old_url + "/",
+                };
+                for (int j = 0; j < keys.length; j++) {
+                    if (new_path == null && uLinks.containsKey(keys[j])) {
+                        uLinks.remove(keys[j]);
+                    } else {
+                        uLinks.put(keys[j], new_url);
+                    }
+                }
+            }
+        }
+    }
+    
     /**
      * Экранирование спецсимволов в строке.
      *
@@ -780,9 +818,7 @@ public class Converter {
         if (VERSION > 0) {
             query.addItem("description", addslashes(uRecord[9]));
         }
-        if (VERSION >= 10) { // AtomM 4 и новее
-            uThemes.put(uRecord[0], uRecord[1]);
-        }
+        uThemesMeta.put(uRecord[0], uRecord);
         sqlData.add(query);
         return true;
     }
@@ -817,8 +853,9 @@ public class Converter {
             query.addItem("edittime", parseDate(uRecord[9]));
         }
         query.addItem("attaches", attach);
-        if (VERSION >= 10 && uThemes != null && uThemes.containsKey(uRecord[1])) { // AtomM 4 и новее
-            query.addItem("id_forum", (String)uThemes.get(uRecord[1]));
+        if (VERSION >= 10 && uThemesMeta != null && uThemesMeta.containsKey(uRecord[1])) { // AtomM 4 и новее
+            String[] uTheme = uThemesMeta.get(uRecord[1]);
+            query.addItem("id_forum", uTheme.length > 1 ? uTheme[1] : "0");
         }
         sqlData.add(query);
         return true;
@@ -835,28 +872,24 @@ public class Converter {
             return false;
         }
         String key = String.format("-%s-%s-16-", uRecord[1], uRecord[0]);
-        if (uForumThread != null) {
-            Integer countPost = 1;
-            if (uForumThread.containsKey(uRecord[1])) {
-                countPost = (Integer) uForumThread.get(uRecord[1]) + 1;
+        Integer countPost = 1;
+        if (VERSION < 6 && uThemesMeta != null && uThemesMeta.containsKey(uRecord[1])) {
+            String[] uTheme = uThemesMeta.get(uRecord[1]);
+            try {
+                countPost = uTheme.length > 6 ? Integer.parseInt(uTheme[6]) : 1;
+            } catch (Exception e) {
             }
-            uForumThread.put(uRecord[1], countPost);
-
-            for (int i = uForumPost.size() - 1; i >= 0; i--) {
-                String url_id = (String) uForumPost.get(i);
-                if (url_id.contains(key)) {
-                    uForumPost.remove(url_id);
-                    if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && POST_ON_FORUM != null && POST_ON_FORUM > 0 && uLinks != null) {
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + url_id,
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + url_id};
-                        int page = ((countPost - 1) / POST_ON_FORUM) + 1;
-                        String value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + uRecord[1] + "?page=" + page + "#post" + countPost;
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
-                    }
+        }
+        for (String url_id : uForumPost) {
+            if (url_id.contains(key)) {
+                uForumPost.remove(url_id);
+                if (VERSION >= 6) {
+                    String value = "/forum/view_post/" + uRecord[0];
+                    updateLink("/forum/" + url_id, value);
+                } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                    String value = "/forum/view_theme/" + uRecord[1] + "?page=" + page + "#post" + countPost;
+                    updateLink("/forum/" + url_id, value);
                 }
             }
         }
@@ -888,29 +921,15 @@ public class Converter {
                             }
                             if (copyFile(filename, new_path + new_filename)) {
                                 pos = filename.lastIndexOf(DS + "_fr" + DS);
-                                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
+                                if (pos >= 0) {
+                                    updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                     if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
                                         filename = ((String) uForumAttachDir.get(j)) + attaches[i];
                                         if (filename.lastIndexOf(ext) >= 0) {
                                             filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
                                             pos = filename.lastIndexOf(DS + "_fr" + DS);
                                             if (pos >= 0) {
-                                                site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                                if (uLinks.containsKey(site)) {
-                                                    uLinks.remove(site);
-                                                }
-                                                site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                                if (uLinks.containsKey(site)) {
-                                                    uLinks.remove(site);
-                                                }
+                                                updateLink(filename.substring(pos), null); // TODO: Check
                                             }
                                         }
                                     }
@@ -955,24 +974,12 @@ public class Converter {
                 if (uRecord[0].equals(uForumCat.get(i))) {
                     uForumCat.remove(uRecord[0]);
                     String value = null;
-                    if (SITE_NAME_NEW != null) {
-                        if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
-                            value = SITE_NAME_NEW.toLowerCase() + "/forum/index/" + uRecord[0];
-                        } else {
-                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + uRecord[0];
-                        }
+                    if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
+                        value = "/forum/index/" + uRecord[0];
+                    } else {
+                        value = "/forum/view_forum/" + uRecord[0];
                     }
-                    if (value != null && SITE_NAME_OLD != null && uLinks != null) {
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0],
-                            "http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0] + "/",
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0],
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0] + "/"};
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
-                    }
+                    updateLink("/forum/" + uRecord[0], value);
                 }
             }
         }
@@ -1048,21 +1055,7 @@ public class Converter {
                 String[] index = name.split("-");
                 if (index.length > 0 && uRecord[0].equals(index[0])) {
                     uLoadsCat.remove(i);
-                    if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                        String value = SITE_NAME_NEW.toLowerCase() + "/loads/" + class_sections + "/" + uRecord[0];
-                        if (index.length > 1) {
-                            value += "&page=" + index[1];
-                        }
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/load/" + name,
-                            "http://" + SITE_NAME_OLD.toLowerCase() + "/load/" + name + "/",
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/load/" + name,
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/load/" + name + "/"};
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
-                    }
+                    updateLink("/load/" + name, "/loads/" + class_sections + "/" + uRecord[0] + (index.length > 1 ? "?page=" + index[1] : ""));
                 }
             }
         }
@@ -1286,15 +1279,8 @@ public class Converter {
             String path = LOADS_TABLES + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS + filename;
             if (copyFile(path, "files" + DS + "loads" + DS + download)) {
                 int pos = path.lastIndexOf(DS + "_ld" + DS);
-                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + path.substring(pos).replace(DS, "/");
-                    if (uLinks.containsKey(site)) {
-                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                    }
-                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + path.substring(pos).replace(DS, "/");
-                    if (uLinks.containsKey(site)) {
-                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                    }
+                if (pos >= 0) {
+                    updateLink(path.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
                 }
             } else {
                 println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
@@ -1314,10 +1300,8 @@ public class Converter {
                 if (filename != null) {
                     String path = DUMP + filename.replace("/", DS);
                     if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                        if (uLinks != null && uLinks.containsKey(uRecord[22])) {
-                            uLinks.put(uRecord[22], SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                        }
-                        output = "file://" + download;
+                        updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
+                        output = "file://" + download; // TODO: Check return value
                     } else {
                         println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
                     }
@@ -1615,33 +1599,19 @@ public class Converter {
                                             parts[0] + ext, size);
                                 }
                                 int pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
+                                if (pos >= 0) {
+                                    updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                 }
                                 if (is_image.equals("1")) {
-                                    new_filename = attachesName("s" + id, Integer.toString(i + 1), date, ".jpg");
+                                    new_filename = attachesName("s" + id, Integer.toString(i + 1), date, ".jpg"); // TODO: Change
                                     filename = ((String) attachDir.get(j)) + "s" + parts[0] + ".jpg";
                                     // TODO: filename = path + "s" + parts[0] + ".jpg";
                                     if (!copyFile(filename, new_path + new_filename)) {
                                         println("WARNING: File \"s" + parts[0] + ".jpg\" not found.");
                                     } else {
                                         pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                        if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                            String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                            if (uLinks.containsKey(site)) {
-                                                uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                            }
-                                            site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                            if (uLinks.containsKey(site)) {
-                                                uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                            }
+                                        if (pos >= 0) {
+                                            updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                         }
                                     }
                                 }
@@ -1853,9 +1823,7 @@ public class Converter {
                         imag = image2;
                     }
                     File new_file = new File("avatars" + DS + uUsers.get(uRecord[0]) + ".jpg");
-                    if (uLinks != null && uLinks.containsKey(uRecord[3])) {
-                        uLinks.put(uRecord[3], SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "avatars/" + uUsers.get(uRecord[0]) + ".jpg");
-                    }
+                    updateLink(uRecord[3], (VERSION >= 10 ? "/data/" : "/sys/") + "avatars/" + uUsers.get(uRecord[0]) + ".jpg");
                     ImageIO.write(imag, "JPEG", new_file);
                     if (file != null && file.exists()) {
                         new_file.setLastModified(file.lastModified());
@@ -2035,71 +2003,65 @@ public class Converter {
                                                         if (index.length >= 4) {
                                                             if (index[3].equals("34")) {
                                                                 // Ленточный форум
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/last_posts/";
-                                                                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                                    value += "&page=" + index[2];
-                                                                }
+                                                                value = "/forum/last_posts/" + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
                                                             } else if (index[3].equals("35")) {
                                                                 // Пользователи форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/users/index/";
+                                                                value = "/users/index/";
                                                             } else if (index[3].equals("36")) {
                                                                 // Правила форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                                value = "/forum/";
                                                             } else if (index[3].equals("37")) {
                                                                 // RSS для форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                                value = "/forum/rss/";
                                                             } else if (index[3].equals("6")) {
                                                                 // Поиск для форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                                value = "/search/";
                                                             } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) {
                                                                 // Сообщения пользователя
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/user_posts/" + index[4];
-                                                                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                                    value += "&page=" + index[2];
-                                                                }
+                                                                value = "/forum/user_posts/" + index[4] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
                                                             } else {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                                value = "/forum/";
                                                             }
                                                         } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                            value = "/forum/";
                                                         }
                                                     } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) {
                                                         uForumCat.add(index[0]);
                                                     } else if (index.length == 2 || (index.length > 2 && index[2].isEmpty())) {
                                                         if (index[1].equals("0")) {
-                                                            // На разделы форума нет расширеных ссылок (предположение)
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
+                                                            // TODO: На разделы форума нет расширеных ссылок (предположение)
+                                                            value = "/forum/view_forum/" + index[0];
                                                         } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
+                                                            value = "/forum/view_theme/" + index[1];
                                                         }
                                                     } else if (index.length == 3 || (index.length > 3 && index[3].isEmpty())) {
                                                         if (index[1].equals("0")) {
-                                                            // На разделы форума нет расширеных ссылок (предположение)
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
+                                                            // TODO: На разделы форума нет расширеных ссылок (предположение)
+                                                            value = "/forum/view_forum/" + index[0];
                                                         } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
+                                                            value = "/forum/view_theme/" + index[1];
                                                         }
                                                         if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                            value += "&page=" + index[2];
+                                                            value += "?page=" + index[2];
                                                         }
                                                     } else if (index.length >= 4) {
                                                         if (index[2].isEmpty() || index[2].equals("0")) {
                                                             if (!index[1].isEmpty() && index[1].equals("17")) {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1] + "&page=999";
+                                                                value = "/forum/view_theme/" + index[1] + "?page=999";
                                                             } else if (index[1].equals("0")) {
-                                                                // На разделы форума нет расширеных ссылок (предположение)
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
+                                                                // TODO: На разделы форума нет расширеных ссылок (предположение)
+                                                                value = "/forum/view_forum/" + index[0];
                                                             } else {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
+                                                                value = "/forum/view_theme/" + index[1];
                                                             }
                                                         } else if (index[3].equals("16")) {
                                                             uForumPost.add(url_id);
                                                         }
                                                     } else {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                        value = "/forum/";
                                                     }
                                                 } else {
-                                                    value = SITE_NAME_NEW.toLowerCase() + "/forum/";
+                                                    value = "/forum/";
                                                 }
                                             } else if (record[3].equals("load")) {
                                                 if (url_id != null) {
@@ -2119,33 +2081,33 @@ public class Converter {
                                                     String[] index = url_id.split("-");
                                                     if (index.length > 0 && index.length < 4) {
                                                         if (index[0].equals("0")) {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/loads/";
+                                                            value = "/loads/";
                                                             if (index.length > 1) {
-                                                                value += "&page=" + index[1];
+                                                                value += "?page=" + index[1];
                                                             }
                                                         } else {
                                                             uLoadsCat.add(url_id);
                                                         }
                                                     } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/loads/view/" + index[3];
+                                                        value = "/loads/view/" + index[3];
                                                     } else if (index.length == 5) {
                                                         if (index[4] != null && !index[4].isEmpty()) {
                                                             if (index[4].equals("1")) {
                                                                 // Добавление материала
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/add_form/";
+                                                                value = "/loads/add_form/";
                                                             } else if (index[4].equals("16")) {
                                                                 // Неактивные материалы и ТОП-ы
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/";
+                                                                value = "/loads/";
                                                             } else if (index[4].equals("17")) {
                                                                 // Материалы пользователя
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/";
+                                                                value = "/loads/";
                                                             }
                                                         }
                                                     } else {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/loads/";
+                                                        value = "/loads/";
                                                     }
                                                 } else {
-                                                    value = SITE_NAME_NEW.toLowerCase() + "/loads/";
+                                                    value = "/loads/";
                                                 }
                                             } else if (record[3].equals("publ")) {
                                                 if (url_id != null) {
@@ -2199,35 +2161,35 @@ public class Converter {
                                                     String[] index = url_id.split("-");
                                                     if (index[0].equals("15")) {
                                                         // Пользователи сайта
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/index/";
+                                                        value = "/users/index/";
                                                     } else if (index[0].equals("1")) {
                                                         // Страница входа
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/login_form/";
+                                                        value = "/users/login_form/";
                                                     } else if (index[0].equals("3")) {
                                                         // Страница регистрации
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/add_form/";
+                                                        value = "/users/add_form/";
                                                     } else if (index[0].equals("34")) {
                                                         // Комментарии пользователя index[1]
                                                     } else if (index[0].equals("8")) {
                                                         index = url_id.split("-", 3);
                                                         // Профиль пользователя с номером index[1] или именем index[2]
                                                         if (index.length == 2) {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/users/info/" + index[1];
+                                                            value = "/users/info/" + index[1];
                                                         } else if (index.length == 3 && index[1].equals("0")) {
                                                             String user_id = (String) uUsers.get(index[2]);
                                                             if (user_id != null) {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/users/info/" + user_id;
+                                                                value = "/users/info/" + user_id;
                                                             }
                                                         }
                                                     }
                                                 } else {
-                                                    value = SITE_NAME_NEW.toLowerCase();
+                                                    value = "";
                                                 }
                                             }
                                         } else if (record.length == 3) {
-                                            value = SITE_NAME_NEW.toLowerCase();
+                                            value = "";
                                         }
-                                        uLinks.put(key, value);
+                                        updateLink(key, value);
                                     }
                                     next = end + 1;
                                 }
@@ -2269,7 +2231,6 @@ public class Converter {
      * и т.п.).
      */
     public void linksUpdate() {
-        uForumThread = new TreeMap();
         for (int i = 0; i < uTables.length; i++) {
             for (int j = 0; j < uTables[i].length; j++) {
                 if (uData[i][j] == null) {
@@ -2420,7 +2381,7 @@ public class Converter {
             Iterator it = uLinks.keySet().iterator();
             while (it.hasNext()) {
                 String key = (String) it.next();
-                if (uLinks.get(key) == null) {
+                if (uLinks.get(key) == null) { // TODO: Check
                     boolean exist = false;
                     // Проверка существования файла и его копирование при наличии
                     if (SITE_NAME_OLD != null) {
@@ -2438,7 +2399,7 @@ public class Converter {
                                 path = path.replace("/", DS);
                                 File file = new File(DUMP + path);
                                 if (file.exists() && file.isFile()) {
-                                    String filename = "www" + DS + path;
+                                    String filename = path;
                                     File dir = new File(filename.substring(0, filename.lastIndexOf(DS)));
                                     if (!dir.exists()) {
                                         try {
@@ -2447,8 +2408,8 @@ public class Converter {
                                         }
                                     }
                                     if (dir.exists() && dir.isDirectory() && copyFile(DUMP + path, filename)) {
-                                        String value = SITE_NAME_NEW.toLowerCase() + "/" + path.replace(DS, "/");
-                                        uLinks.put(key, value);
+                                        String value = "/" + path.replace(DS, "/");
+                                        updateLink(key, value);
                                         exist = true;
                                     }
                                 }
@@ -2470,7 +2431,7 @@ public class Converter {
      */
     public ArrayList getSQL() {
         if (VERSION >= 10) { // AtomM 4 и новее
-            uThemes = new TreeMap();
+            uThemesMeta = new TreeMap();
         }
         boolean forumEmpty = false;
         boolean loadsEmpty = false;
