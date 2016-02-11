@@ -68,7 +68,7 @@ public class Converter {
 
     private ArrayList<ArrayList> atmData = null;
     
-    private TreeMap uUsers = null;
+    private TreeMap<String, String> uUsers = null;
     private TreeMap<String, String[]> uUsersMeta = null;
     private TreeMap<String, String[]> uThemesMeta = null;
     private ArrayList uForumAttachDir = null;
@@ -183,14 +183,13 @@ public class Converter {
      */
     private String getMD5(String str) {
         MessageDigest md5;
-        StringBuffer hexString = new StringBuffer();
+        StringBuilder hexString = new StringBuilder();
         try {
             md5 = MessageDigest.getInstance("md5");
             md5.reset();
             md5.update(str.getBytes());
-            byte messageDigest[] = md5.digest();
-            for (int i = 0; i < messageDigest.length; i++) {
-                hexString.append(Integer.toHexString(0xFF & messageDigest[i]));
+            for (byte digest : md5.digest()) {
+                hexString.append(Integer.toHexString(0xFF & digest));
             }
         } catch (NoSuchAlgorithmException e) {
             return e.toString();
@@ -215,8 +214,12 @@ public class Converter {
      * @return дата.
      */
     private Date parseDate(String date) {
-        Date parse = (date != null && !date.isEmpty() && !date.equals("0")) ? new Date(Long.parseLong(date) * 1000) : new Date();
-        return parse;
+        try {
+            Date parse = (date != null && !date.isEmpty() && !date.equals("0")) ? new Date(Long.parseLong(date) * 1000) : new Date();
+            return parse;
+        } catch (Exception e) {
+            return new Date();
+        }
     }
 
     /**
@@ -229,11 +232,7 @@ public class Converter {
     private String parseDateToString(String date) {
         String parse = "0000-00-00 00:00:00";
         if (date != null && !date.isEmpty() && !date.equals("0")) {
-            try {
-                parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parseDate(date));
-            } catch (Exception e) {
-                parse = "0000-00-00 00:00:00";
-            }
+            parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parseDate(date));
         }
         return parse;
     }
@@ -369,7 +368,7 @@ public class Converter {
     private void updateLink(String old_path, String new_path) {
         if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
             String new_url = (new_path != null && !new_path.isEmpty()) ? new_path.replace(DS, "/") : "";
-            new_url = SITE_NAME_NEW.toLowerCase() + (new_url.isEmpty() || new_url.startsWith("/") ? "" : "/" + new_url);
+            new_url = SITE_NAME_NEW.toLowerCase() + (new_url.isEmpty() || new_url.startsWith("/") ? "" : "/") + new_url;
             if (old_path.toLowerCase().startsWith("http://") || old_path.toLowerCase().startsWith("https://")) {
                 if (uLinks.containsKey(old_path)) {
                     if (new_path != null && !new_path.isEmpty()) {
@@ -379,25 +378,64 @@ public class Converter {
                     }
                 }
             } else {
-                String old_url = (old_path != null && !old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
-                old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/" + old_url);
+                String old_url = (!old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
+                old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/") + old_url;
                 String[] keys = {
                     "http://" + SITE_NAME_OLD.toLowerCase() + old_url,
                     "http://" + SITE_NAME_OLD.toLowerCase() + old_url + "/",
                     "http://www." + SITE_NAME_OLD.toLowerCase() + old_url,
                     "http://www." + SITE_NAME_OLD.toLowerCase() + old_url + "/",
                 };
-                for (int j = 0; j < keys.length; j++) {
-                    if (new_path == null && uLinks.containsKey(keys[j])) {
-                        uLinks.remove(keys[j]);
+                for (String key : keys) {
+                    if (new_path == null && uLinks.containsKey(key)) {
+                        uLinks.remove(key);
                     } else {
-                        uLinks.put(keys[j], new_url);
+                        uLinks.put(key, new_url);
                     }
                 }
             }
         }
     }
+
+    /**
+     * Нахождение относительного пути по ссылке.
+     *
+     * @param url анализируемый URL.
+     * @return <tt>null</tt> если домен не совпадает, иначе относительный путь.
+     */
+    private String trimUrl(String url) {
+        String path = null;
+        if (SITE_NAME_OLD != null) {
+            String[] keys = {
+                "http://" + SITE_NAME_OLD.toLowerCase(),
+                "http://www." + SITE_NAME_OLD.toLowerCase(),
+            };
+            for (String key : keys) {
+                if (url.toLowerCase().startsWith(key)) {
+                    path = url.substring(key.length());
+                    path = path.startsWith("/") ? path.substring(1) : path;
+                }
+            }
+        }
+        return path;
+    }
     
+    /**
+     * Перевод строки в число.
+     *
+     * @param str строка, содержащая число;
+     * @param def значение по умолчанию, присваемое при невозможности перевода.
+     * @return преобразованное число.
+     */
+    private int parseInt(String str, int def) {
+        int result = def;
+        try {
+            result = str != null ? Integer.parseInt(str) : def;
+        } catch (Exception e) {
+            result = def;
+        }
+        return result;
+    }
     /**
      * Экранирование спецсимволов в строке.
      *
@@ -790,20 +828,8 @@ public class Converter {
         if (uRecord.length < 13) {
             return false;
         }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[10]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
-        String id_last_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[12]);
-            id_last_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_last_author = "0";
-        }
+        String id_author = (uUsers.get(uRecord[10]) != null && !(uUsers.get(uRecord[10])).isEmpty()) ? uUsers.get(uRecord[10]) : "0";
+        String id_last_author = (uUsers.get(uRecord[12]) != null && !(uUsers.get(uRecord[12])).isEmpty()) ? uUsers.get(uRecord[12]) : "0";
         InsertQuery query = new InsertQuery(PREF + "themes");
         query.addItem("id", uRecord[0]);
         query.addItem("id_forum", uRecord[1]);
@@ -832,13 +858,7 @@ public class Converter {
         if (uRecord.length < 11) {
             return false;
         }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[6]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
+        String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         String attach = "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             attach = (uRecord[10].split("`").length > 0) ? "1" : "0";
@@ -875,12 +895,10 @@ public class Converter {
         Integer countPost = 1;
         if (VERSION < 6 && uThemesMeta != null && uThemesMeta.containsKey(uRecord[1])) {
             String[] uTheme = uThemesMeta.get(uRecord[1]);
-            try {
-                countPost = uTheme.length > 6 ? Integer.parseInt(uTheme[6]) : 1;
-            } catch (Exception e) {
-            }
+            countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
         }
-        for (String url_id : uForumPost) {
+        for (int i = uForumPost.size() - 1; i >= 0; i--) {
+            String url_id = uForumPost.get(i);
             if (url_id.contains(key)) {
                 uForumPost.remove(url_id);
                 if (VERSION >= 6) {
@@ -893,13 +911,7 @@ public class Converter {
                 }
             }
         }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[6]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
+        String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             String[] attaches = uRecord[10].split("`");
             if (uForumAttachDir != null && uForumAttachDir.size() > 0) {
@@ -1005,24 +1017,9 @@ public class Converter {
             if (uRecord.length < 17) {
                 return false;
             }
-            String last_theme_id = "";
-            try {
-                last_theme_id = ((uRecord[16] != null) && !uRecord[16].isEmpty()) ? uRecord[16] : "";
-            } catch (Exception e) {
-                last_theme_id = "";
-            }
-            String themes = "0";
-            try {
-                themes = ((uRecord[9] != null) && !uRecord[9].isEmpty()) ? uRecord[9] : "0";
-            } catch (Exception e) {
-                themes = "0";
-            }
-            String posts = "0";
-            try {
-                posts = ((uRecord[10] != null) && !uRecord[10].isEmpty()) ? uRecord[10] : "0";
-            } catch (Exception e) {
-                posts = "0";
-            }
+            String last_theme_id = ((uRecord[16] != null) && !uRecord[16].isEmpty()) ? uRecord[16] : "";
+            String themes = ((uRecord[9] != null) && !uRecord[9].isEmpty()) ? uRecord[9] : "0";
+            String posts = ((uRecord[10] != null) && !uRecord[10].isEmpty()) ? uRecord[10] : "0";
             query.addItem("in_cat", uRecord[1]);
             query.addItem("last_theme_id", last_theme_id);
             query.addItem("themes", themes);
@@ -1072,12 +1069,7 @@ public class Converter {
         if (uRecord.length < 7) {
             return false;
         }
-        String section_id = "0";
-        try {
-            section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
-        } catch (Exception e) {
-            section_id = "0";
-        }
+        String section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "loads_categories" : "loads_sections"));
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[5]));
@@ -1118,12 +1110,7 @@ public class Converter {
         if (uRecord.length < 5) {
             return false;
         }
-        int id = 3 + mode;
-        try {
-            id = (Integer.parseInt(uRecord[0]) + 1) * 3 + mode;
-        } catch (Exception e) {
-            id = 3 + mode;
-        }
+        int id = (parseInt(uRecord[0], 0) + 1) * 3 + mode;
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[3]));
@@ -1152,12 +1139,7 @@ public class Converter {
         if (uRecord.length < 6) {
             return false;
         }
-        String section_id = "0";
-        try {
-            section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
-        } catch (Exception e) {
-            section_id = "0";
-        }
+        String section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "stat_categories" : "stat_sections"));
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[5]));
@@ -1205,14 +1187,7 @@ public class Converter {
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[6].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[26]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
-
+        String author_id = (uUsers.get(uRecord[26]) != null && !(uUsers.get(uRecord[26])).isEmpty()) ? uUsers.get(uRecord[26]) : "0";
         InsertQuery query = new InsertQuery(PREF + "loads");
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[15]));
@@ -1276,7 +1251,7 @@ public class Converter {
         if (uRecord[24] != null && !uRecord[24].isEmpty()) {
             download = loadsName(uRecord[24], uRecord[5]);
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
-            String path = LOADS_TABLES + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS + filename;
+            String path = LOADS_TABLES + ((Integer) (parseInt(uRecord[0], 0) / 100)).toString() + DS + filename;
             if (copyFile(path, "files" + DS + "loads" + DS + download)) {
                 int pos = path.lastIndexOf(DS + "_ld" + DS);
                 if (pos >= 0) {
@@ -1285,26 +1260,16 @@ public class Converter {
             } else {
                 println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
             }
-        } else if (uRecord[22] != null && !uRecord[22].isEmpty() && SITE_NAME_OLD != null) {
-            String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-            String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-            if (uRecord[22].toLowerCase().startsWith(site_0)
-                    || uRecord[22].toLowerCase().startsWith(site_1)) {
-                String filename = null;
+        } else if (uRecord[22] != null && !uRecord[22].isEmpty()) {
+            String filename = trimUrl(uRecord[22]);
+            if (filename != null) {
                 download = loadsName(uRecord[22], uRecord[5]);
-                if (uRecord[22].toLowerCase().startsWith(site_0)) {
-                    filename = uRecord[22].substring(site_0.length() + 1);
-                } else if (uRecord[22].toLowerCase().startsWith(site_1)) {
-                    filename = uRecord[22].substring(site_1.length() + 1);
-                }
-                if (filename != null) {
-                    String path = DUMP + filename.replace("/", DS);
-                    if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                        updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                        output = "file://" + download; // TODO: Check return value
-                    } else {
-                        println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
-                    }
+                String path = DUMP + filename.replace("/", DS);
+                if (copyFile(path, "files" + DS + "loads" + DS + download)) {
+                    updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
+                    output = "file://" + download; // TODO: Check return value
+                } else {
+                    println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
                 }
             }
         }
@@ -1324,31 +1289,13 @@ public class Converter {
         if (uRecord.length < 17) {
             return false;
         }
-        int id = 0;
-        try {
-            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + mode;
-        } catch (Exception e) {
-            return false;
-        }
-        int category_id = 3 + mode;
-        try {
-            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + mode;
-        } catch (Exception e) {
-            category_id = 3 + mode;
-        }
-        if (category_id == 0) {
-            category_id = 1;
-        }
+        int id = (parseInt(uRecord[0], 1) - 1) * 3 + mode;
+        int category_id = (parseInt(uRecord[1], 0) + 1) * 3 + mode;
+        category_id = category_id <= 0 ? 1 : category_id;
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[5].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[6].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[10]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[10]) != null && !(uUsers.get(uRecord[10])).isEmpty()) ? uUsers.get(uRecord[10]) : "0";
         InsertQuery query = new InsertQuery(PREF + "news");
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[11]));
@@ -1383,26 +1330,10 @@ public class Converter {
         if (uRecord.length < 18) {
             return false;
         }
-        int id = 0;
-        try {
-            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + 3;
-        } catch (Exception e) {
-            return false;
-        }
-        int category_id = 6;
-        try {
-            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + 3;
-        } catch (Exception e) {
-            category_id = 6;
-        }
+        int id = (parseInt(uRecord[0], 1) - 1) * 3 + 3;
+        int category_id = (parseInt(uRecord[1], 0) + 1) * 3 + 3;
         String available = (uRecord[5].equals("0")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[13]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[13]) != null && !(uUsers.get(uRecord[13])).isEmpty()) ? uUsers.get(uRecord[13]) : "0";
         InsertQuery query = new InsertQuery(PREF + "news");
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[10]));
@@ -1438,13 +1369,7 @@ public class Converter {
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[6].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[15]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[15]) != null && !(uUsers.get(uRecord[15])).isEmpty()) ? uUsers.get(uRecord[15]) : "0";
         InsertQuery query = new InsertQuery(PREF + "stat");
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[13]));
@@ -1505,14 +1430,7 @@ public class Converter {
         String date = null;
         String author_name = null;
         ArrayList<String> attachDir = null;
-        String id = uRecord[0];
-        if (mode > 0) {
-            try {
-                id = Integer.toString((Integer.parseInt(uRecord[0]) - 1) * 3 + mode);
-            } catch (Exception e) {
-                return null;
-            }
-        }
+        String id = mode > 0 ? Integer.toString((parseInt(uRecord[0], 1) - 1) * 3 + mode) : uRecord[0];
         String[] paths = {"_pu", "_nw", "_bl", "_fq"};
         String[] new_paths = {"stat", "news", "news", "news"};
         String[] tables = {"stat_attaches", "news_attaches", "news_attaches", "news_attaches"};
@@ -1556,13 +1474,7 @@ public class Converter {
             default:
                 return null;
         }
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(author_name);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(author_name) != null && !(uUsers.get(author_name)).isEmpty()) ? uUsers.get(author_name) : "0";
         // TODO: String path = DUMP + paths[mode] + DS + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS;
         String output = "";
         String[] attaches = files.split("\\|");
@@ -1640,10 +1552,8 @@ public class Converter {
         String[] moduleName = {null, "news", "news", "stat", "foto", "loads", null, null};
         String[] tableName = {null, "news_comments", "news_comments", "stat_comments", null, "loads_comments", null, null};
         String[] columnName = {null, "new_id", "new_id", "entity_id", null, "entity_id", null, null};
-        int moduleID = 0;
-        try {
-            moduleID = Integer.parseInt(uRecord[1]);
-        } catch (Exception e) {
+        int moduleID = parseInt(uRecord[1], 0);
+        if (moduleID == 0) {
             return false;
         }
         if (VERSION < 6 && (moduleID >= tableName.length || tableName[moduleID] == null)) {
@@ -1652,10 +1562,8 @@ public class Converter {
         if (VERSION >= 6 && (moduleID >= moduleName.length || moduleName[moduleID] == null)) {
             return false;
         }
-        int entity_id = 0;
-        try {
-            entity_id = Integer.parseInt(uRecord[2]);
-        } catch (Exception e) {
+        int entity_id = parseInt(uRecord[2], 0);
+        if (entity_id == 0) {
             return false;
         }
         if (moduleID == 2) {
@@ -1708,10 +1616,10 @@ public class Converter {
         String locked = "0";
         String activation = uRecord[23].equals("0") ? "" : uRecord[23];
         try {
-            String[] str = (String[])uUsersMeta.get(uRecord[0]);
+            String[] str = uUsersMeta.get(uRecord[0]);
             if (str != null) {
                 posts = str[9];
-                status = ((Integer.parseInt(str[2]) <= 4) ? str[2] : "1");
+                status = ((Integer.parseInt(str[2]) <= 4) ? str[2] : "1"); // TODO: Groups
                 last_visit = str[18];
                 locked = ((Integer.parseInt(str[2]) == 255) ? "1" : str[3]);
             } else {
@@ -1786,26 +1694,14 @@ public class Converter {
         if (!uRecord[3].isEmpty() && !uRecord[3].equals("0")) {
             File file = null;
             BufferedImage imag = null;
-            if (SITE_NAME_OLD != null) {
-                String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-                String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-                if (uRecord[3].toLowerCase().startsWith(site_0)
-                        || uRecord[3].toLowerCase().startsWith(site_1)) {
-                    String path = null;
-                    if (uRecord[3].toLowerCase().startsWith(site_0)) {
-                        path = uRecord[3].substring(site_0.length() + 1);
-                    } else if (uRecord[3].toLowerCase().startsWith(site_1)) {
-                        path = uRecord[3].substring(site_1.length() + 1);
-                    }
-                    if (path != null) {
-                        path = path.replace("/", DS);
-                        file = new File(DUMP + path);
-                    }
-                }
+            String path = trimUrl(uRecord[3]);
+            if (path != null) {
+                path = path.replace("/", DS);
+                file = new File(DUMP + path);
             } else {
-                String[] path = uRecord[3].split("/");
-                if (path.length > 1) {
-                    file = new File(AVATAR_TABLES + path[path.length - 2] + DS + path[path.length - 1]);
+                String[] paths = uRecord[3].split("/");
+                if (paths.length > 1) {
+                    file = new File(AVATAR_TABLES + paths[paths.length - 2] + DS + paths[paths.length - 1]);
                 }
             }
             try {
@@ -1893,7 +1789,7 @@ public class Converter {
         uForumCat = new ArrayList();
         uForumPost = new ArrayList();
         atmData = new ArrayList<ArrayList>();
-        for (int i = 0; i < uTables.length; i++) {
+        for (String[] uTable : uTables) {
             atmData.add(new ArrayList());
         }
 
@@ -1902,7 +1798,6 @@ public class Converter {
                 for (int j = 0; j < uTables[i].length; j++) {
                     uData[i][j] = null;
                 }
-                continue;
             } else {
                 for (int j = 0; j < uTables[i].length; j++) {
                     int id = 0;
@@ -1935,14 +1830,7 @@ public class Converter {
                             }
                             line_int = line_int.replace("\\|", "&#124;");
                             String[] uRecord = line_int.split("\\|");
-                            int new_id = -1;
-                            try {
-                                if (!uTables[i][j].equals("users")) {
-                                    new_id = Integer.parseInt(uRecord[0]);
-                                }
-                            } catch (Exception e) {
-                                new_id = -1;
-                            }
+                            int new_id = (!uTables[i][j].equals("users")) ? parseInt(uRecord[0], -1) : -1;
                             for (int k = 0; k < uRecord.length; k++) {
                                 if (uRecord[k].contains("&#124;")) {
                                     uRecord[k] = uRecord[k].replace("&#124;", "|");
@@ -1953,7 +1841,7 @@ public class Converter {
                                 int next = 0;
 
                                 while ((uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next) >= 0
-                                        || uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase()) >= 0)
+                                        || uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase(), next) >= 0)
                                         && next >= 0 && next < uRecord[k].length()) {
                                     int posH = uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next);
                                     int posF = uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase(), next);
@@ -1971,8 +1859,8 @@ public class Converter {
                                     }
                                     String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
                                     int end = uRecord[k].length();
-                                    for (int l = 0; l < breaks.length; l++) {
-                                        int pos = uRecord[k].indexOf(breaks[l], start + 7 + SITE_NAME_OLD.length());
+                                    for (String pos_break : breaks) {
+                                        int pos = uRecord[k].indexOf(pos_break, start + 7 + SITE_NAME_OLD.length());
                                         if (pos > 0 && pos < end) {
                                             end = pos;
                                         }
@@ -2199,12 +2087,8 @@ public class Converter {
                             if (new_id >= 0 && new_id < id) {
                                 int ii = uData[i][j].size();
                                 while (ii > 0) {
-                                    int old_id = 0;
                                     String[] record = (String[]) uData[i][j].get(ii - 1);
-                                    try {
-                                        old_id = Integer.parseInt(record[0]);
-                                    } catch (Exception e) {
-                                    }
+                                    int old_id = parseInt(record[0], 0);
                                     if (old_id < new_id) {
                                         break;
                                     }
@@ -2244,9 +2128,8 @@ public class Converter {
                     uForumAttachDir = new ArrayList();
                     File attachDir = new File(FORUM_ATTACH_TABLES);
                     if (attachDir.exists()) {
-                        String[] attach_cats = attachDir.list();
-                        for (int k = 0; k < attach_cats.length; k++) {
-                            uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[k] + DS);
+                        for (String attach_cat : attachDir.list()) {
+                            uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cat + DS);
                         }
                         if (!createDir("files" + DS + "forum", "Attachments for forum not supported.", true)
                                 || !createDir("images" + DS + "forum", "Attachments for forum not supported.", true)) {
@@ -2264,9 +2147,8 @@ public class Converter {
                         uStatAttachDir = new ArrayList();
                         File attachDir = new File(PUBL_ATTACH_TABLES);
                         if (attachDir.exists()) {
-                            String[] attach_cats = attachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[k] + DS);
+                            for (String attach_cat : attachDir.list()) {
+                                uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cat + DS);
                             }
                             if (!createDir("files" + DS + "stat", "Attachments for publication not supported.", true)
                                     || !createDir("images" + DS + "stat", "Attachments for publication not supported.", true)) {
@@ -2285,27 +2167,24 @@ public class Converter {
                         uFaqAttachDir = new ArrayList();
                         File newsAttachDir = new File(NEWS_ATTACH_TABLES);
                         if (newsAttachDir.exists()) {
-                            String[] attach_cats = newsAttachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[k] + DS);
+                            for (String attach_cat : newsAttachDir.list()) {
+                                uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cat + DS);
                             }
                         } else {
                             println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments for news not supported.");
                         }
                         File blogAttachDir = new File(BLOG_ATTACH_TABLES);
                         if (blogAttachDir.exists()) {
-                            String[] attach_cats = blogAttachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[k] + DS);
+                            for (String attach_cat : blogAttachDir.list()) {
+                                uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cat + DS);
                             }
                         } else {
                             println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blog not supported.");
                         }
                         File faqAttachDir = new File(FAQ_ATTACH_TABLES);
                         if (faqAttachDir.exists()) {
-                            String[] attach_cats = faqAttachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[k] + DS);
+                            for (String attach_cat : faqAttachDir.list()) {
+                                uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cat + DS);
                             }
                         } else {
                             println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQ not supported.");
@@ -2384,40 +2263,23 @@ public class Converter {
                 if (uLinks.get(key) == null) { // TODO: Check
                     boolean exist = false;
                     // Проверка существования файла и его копирование при наличии
-                    if (SITE_NAME_OLD != null) {
-                        String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-                        String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-                        if (key.toLowerCase().startsWith(site_0)
-                                || key.toLowerCase().startsWith(site_1)) {
-                            String path = null;
-                            if (key.toLowerCase().startsWith(site_0)) {
-                                path = key.substring(site_0.length() + 1);
-                            } else if (key.toLowerCase().startsWith(site_1)) {
-                                path = key.substring(site_1.length() + 1);
-                            }
-                            if (path != null) {
-                                path = path.replace("/", DS);
-                                File file = new File(DUMP + path);
-                                if (file.exists() && file.isFile()) {
-                                    String filename = path;
-                                    File dir = new File(filename.substring(0, filename.lastIndexOf(DS)));
-                                    if (!dir.exists()) {
-                                        try {
-                                            dir.mkdirs();
-                                        } catch (Exception e) {
-                                        }
-                                    }
-                                    if (dir.exists() && dir.isDirectory() && copyFile(DUMP + path, filename)) {
-                                        String value = "/" + path.replace(DS, "/");
-                                        updateLink(key, value);
-                                        exist = true;
-                                    }
+                    String path = trimUrl(key);
+                    if (path != null) {
+                        path = path.replace("/", DS);
+                        File file = new File(DUMP + path);
+                        if (file.exists() && file.isFile()) {
+                            String filename = path.substring(0, path.lastIndexOf(DS));
+                            if (createDir(filename, "", false)) {
+                                if (copyFile(DUMP + path, path)) {
+                                    String value = "/" + path.replace(DS, "/");
+                                    updateLink(key, value);
+                                    exist = true;
                                 }
                             }
                         }
                     }
                     if (!exist) {
-                        println(key);
+                        println("WARNING: URL \"" + key + "\" not modified.");
                     }
                 }
             }
