@@ -19,7 +19,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 import java.util.TreeMap;
@@ -79,7 +78,6 @@ public class Converter {
 
     private ArrayList uLoadsCat = null;
     private ArrayList uForumCat = null;
-    private ArrayList<String> uForumPost = null;
 
     private ArrayList[][] uData = {{null},
     {null, null, null},
@@ -101,7 +99,7 @@ public class Converter {
     {"news", "news_sections"},
     {"loads_comments", "stat_comments", "news_comments"}};
 
-    private TreeMap uLinks = null;
+    private TreeMap<String, String> uLinks = null;
 
         public void setPassword(String PASSWORD) {
         this.PASSWORD = PASSWORD;
@@ -370,25 +368,25 @@ public class Converter {
             String new_url = (new_path != null && !new_path.isEmpty()) ? new_path.replace(DS, "/") : "";
             new_url = SITE_NAME_NEW.toLowerCase() + (new_url.isEmpty() || new_url.startsWith("/") ? "" : "/") + new_url;
             if (old_path.toLowerCase().startsWith("http://") || old_path.toLowerCase().startsWith("https://")) {
-                if (uLinks.containsKey(old_path)) {
-                    if (new_path != null && !new_path.isEmpty()) {
-                        uLinks.remove(old_path);
-                    } else {
-                        uLinks.put(old_path, new_url);
-                    }
+                if (new_path == null) {
+                    uLinks.put(old_path, null);
+                } else {
+                    uLinks.put(old_path, new_url);
                 }
             } else {
                 String old_url = (!old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
                 old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/") + old_url;
-                String[] keys = {
-                    "http://" + SITE_NAME_OLD.toLowerCase() + old_url,
-                    "http://" + SITE_NAME_OLD.toLowerCase() + old_url + "/",
-                    "http://www." + SITE_NAME_OLD.toLowerCase() + old_url,
-                    "http://www." + SITE_NAME_OLD.toLowerCase() + old_url + "/",
-                };
-                for (String key : keys) {
-                    if (new_path == null && uLinks.containsKey(key)) {
-                        uLinks.remove(key);
+                String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+                ArrayList<String> keys = new ArrayList<String>();
+                for (String site : old_sites) {
+                    keys.add("http://" + site + old_url);
+                    keys.add("http://" + site + old_url + "/");
+                    keys.add("http://www." + site + old_url);
+                    keys.add("http://www." + site + old_url + "/");
+                }
+                for (String key : keys.toArray(old_sites)) {
+                    if (new_path == null) {
+                        uLinks.put(key, null);
                     } else {
                         uLinks.put(key, new_url);
                     }
@@ -406,11 +404,13 @@ public class Converter {
     private String trimUrl(String url) {
         String path = null;
         if (SITE_NAME_OLD != null) {
-            String[] keys = {
-                "http://" + SITE_NAME_OLD.toLowerCase(),
-                "http://www." + SITE_NAME_OLD.toLowerCase(),
-            };
-            for (String key : keys) {
+            String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+            ArrayList<String> keys = new ArrayList<String>();
+            for (String site : old_sites) {
+                keys.add("http://" + site);
+                keys.add("http://www." + site);
+            }
+            for (String key : keys.toArray(old_sites)) {
                 if (url.toLowerCase().startsWith(key)) {
                     path = url.substring(key.length());
                     path = path.startsWith("/") ? path.substring(1) : path;
@@ -891,26 +891,6 @@ public class Converter {
         if (uRecord.length < 11) {
             return false;
         }
-        String key = String.format("-%s-%s-16-", uRecord[1], uRecord[0]);
-        Integer countPost = 1;
-        if (VERSION < 6 && uThemesMeta != null && uThemesMeta.containsKey(uRecord[1])) {
-            String[] uTheme = uThemesMeta.get(uRecord[1]);
-            countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
-        }
-        for (int i = uForumPost.size() - 1; i >= 0; i--) {
-            String url_id = uForumPost.get(i);
-            if (url_id.contains(key)) {
-                uForumPost.remove(url_id);
-                if (VERSION >= 6) {
-                    String value = "/forum/view_post/" + uRecord[0];
-                    updateLink("/forum/" + url_id, value);
-                } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
-                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
-                    String value = "/forum/view_theme/" + uRecord[1] + "?page=" + page + "#post" + countPost;
-                    updateLink("/forum/" + url_id, value);
-                }
-            }
-        }
         String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             String[] attaches = uRecord[10].split("`");
@@ -941,7 +921,7 @@ public class Converter {
                                             filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
                                             pos = filename.lastIndexOf(DS + "_fr" + DS);
                                             if (pos >= 0) {
-                                                updateLink(filename.substring(pos), null); // TODO: Check
+                                                updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                             }
                                         }
                                     }
@@ -1507,20 +1487,15 @@ public class Converter {
                                 } else { // Старше 1.2 beta
                                     float size = (float) new File(new_path + new_filename).length() / 1024;
                                     output += String.format("<br />Вложение %d: <a href=\"%s\">%s (%.3f Кбайт)</a>", i + 1,
-                                            SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"),
+                                            SITE_NAME_NEW.toLowerCase() + "/sys/" + (new_path + new_filename).replace(DS, "/"),
                                             parts[0] + ext, size);
                                 }
                                 int pos = filename.lastIndexOf(DS + paths[mode] + DS);
                                 if (pos >= 0) {
                                     updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
-                                }
-                                if (is_image.equals("1")) {
-                                    new_filename = attachesName("s" + id, Integer.toString(i + 1), date, ".jpg"); // TODO: Change
-                                    filename = ((String) attachDir.get(j)) + "s" + parts[0] + ".jpg";
-                                    // TODO: filename = path + "s" + parts[0] + ".jpg";
-                                    if (!copyFile(filename, new_path + new_filename)) {
-                                        println("WARNING: File \"s" + parts[0] + ".jpg\" not found.");
-                                    } else {
+                                    if (is_image.equals("1")) {
+                                        filename = ((String) attachDir.get(j)) + "s" + parts[0] + ".jpg";
+                                        // TODO: filename = path + "s" + parts[0] + ".jpg";
                                         pos = filename.lastIndexOf(DS + paths[mode] + DS);
                                         if (pos >= 0) {
                                             updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
@@ -1787,7 +1762,7 @@ public class Converter {
         uLinks = new TreeMap();
         uLoadsCat = new ArrayList();
         uForumCat = new ArrayList();
-        uForumPost = new ArrayList();
+        ArrayList<String> uForumPost = new ArrayList();
         atmData = new ArrayList<ArrayList>();
         for (String[] uTable : uTables) {
             atmData.add(new ArrayList());
@@ -1839,28 +1814,28 @@ public class Converter {
                                     continue;
                                 }
                                 int next = 0;
-
-                                while ((uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next) >= 0
-                                        || uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase(), next) >= 0)
-                                        && next >= 0 && next < uRecord[k].length()) {
-                                    int posH = uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next);
-                                    int posF = uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase(), next);
-                                    int start = 0;
-                                    if (posH < 0) {
-                                        if (posF < 0) {
-                                            break;
-                                        } else {
-                                            start = posF;
-                                        }
-                                    } else if (posF < 0) {
-                                        start = posH;
-                                    } else {
-                                        start = posH > posF ? posH : posF;
+                                String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+                                ArrayList<String> keys = new ArrayList<String>();
+                                for (String site : old_sites) {
+                                    keys.add("http://" + site);
+                                    keys.add("http://www." + site);
+                                }
+                                boolean found = false;
+                                int found_index = -1;
+                                int start = uRecord[k].length();
+                                for (int l = 0; l < keys.size(); l++) {
+                                    int pos = uRecord[k].indexOf(keys.get(l), next);
+                                    if (pos >= 0 && pos < start) {
+                                        found = true;
+                                        found_index = l;
+                                        start = pos;
                                     }
+                                }
+                                while (found && next >= 0 && next < uRecord[k].length()) {
                                     String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
                                     int end = uRecord[k].length();
                                     for (String pos_break : breaks) {
-                                        int pos = uRecord[k].indexOf(pos_break, start + 7 + SITE_NAME_OLD.length());
+                                        int pos = uRecord[k].indexOf(pos_break, start + keys.get(found_index).length());
                                         if (pos > 0 && pos < end) {
                                             end = pos;
                                         }
@@ -2080,6 +2055,17 @@ public class Converter {
                                         updateLink(key, value);
                                     }
                                     next = end + 1;
+                                    found = false;
+                                    found_index = -1;
+                                    start = uRecord[k].length();
+                                    for (int l = 0; l < keys.size(); l++) {
+                                        int pos = uRecord[k].indexOf(keys.get(l), next);
+                                        if (pos >= 0 && pos < start) {
+                                            found = true;
+                                            found_index = l;
+                                            start = pos;
+                                        }
+                                    }
                                 }
                             }
                             line_int = "";
@@ -2108,6 +2094,29 @@ public class Converter {
                 }
             }
         }
+        // Обработка ссылок на посты форума
+        for (int i = uForumPost.size() - 1; i >= 0; i--) {
+            String url_id = uForumPost.get(i);
+            if (url_id != null) {
+                String[] parts = url_id.split("-");
+                Integer countPost = 1;
+                String theme_id = parts.length > 1 ? parts[1] : null;
+                String post_id = parts.length > 2 ? parts[2] : null;
+                if (VERSION < 6 && uThemesMeta != null && uThemesMeta.containsKey(theme_id)) {
+                    String[] uTheme = uThemesMeta.get(theme_id);
+                    countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
+                }
+                if (VERSION >= 6) {
+                    String value = "/forum/view_post/" + post_id;
+                    updateLink("/forum/" + url_id, value);
+                } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                    String value = "/forum/view_theme/" + theme_id + "?page=" + page + "#post" + countPost;
+                    updateLink("/forum/" + url_id, value);
+                }
+            }
+            uForumPost.remove(url_id);
+        }
     }
 
     /**
@@ -2132,7 +2141,7 @@ public class Converter {
                             uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cat + DS);
                         }
                         if (!createDir("files" + DS + "forum", "Attachments for forum not supported.", true)
-                                || !createDir("images" + DS + "forum", "Attachments for forum not supported.", true)) {
+                                || (VERSION >= 11 && !createDir("images" + DS + "forum", "Attachments for forum not supported.", true))) {
                             uForumAttachDir.clear();
                         }
                     } else {
@@ -2151,7 +2160,7 @@ public class Converter {
                                 uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cat + DS);
                             }
                             if (!createDir("files" + DS + "stat", "Attachments for publication not supported.", true)
-                                    || !createDir("images" + DS + "stat", "Attachments for publication not supported.", true)) {
+                                    || (VERSION >= 11 && !createDir("images" + DS + "stat", "Attachments for publication not supported.", true))) {
                                 uStatAttachDir.clear();
                             }
                         } else {
@@ -2191,7 +2200,7 @@ public class Converter {
                         }
                         // Результирующая папка
                         if (!createDir("files" + DS + "news", "Attachments for news not supported.", true)
-                                || !createDir("images" + DS + "news", "Attachments for news not supported.", true)) {
+                                || (VERSION >= 11 && !createDir("images" + DS + "news", "Attachments for news not supported.", true))) {
                             uStatAttachDir.clear();
                         }
                     }
@@ -2257,10 +2266,8 @@ public class Converter {
         }
         println("Check bad links...");
         if (uLinks != null) {
-            Iterator it = uLinks.keySet().iterator();
-            while (it.hasNext()) {
-                String key = (String) it.next();
-                if (uLinks.get(key) == null) { // TODO: Check
+            for (String key : uLinks.keySet()) {
+                if (!key.endsWith("/") && uLinks.get(key) == null) {
                     boolean exist = false;
                     // Проверка существования файла и его копирование при наличии
                     String path = trimUrl(key);
@@ -2292,9 +2299,7 @@ public class Converter {
      * @return список, в котором лежат списки с SQL-запросами.
      */
     public ArrayList getSQL() {
-        if (VERSION >= 10) { // AtomM 4 и новее
-            uThemesMeta = new TreeMap();
-        }
+        uThemesMeta = new TreeMap();
         boolean forumEmpty = false;
         boolean loadsEmpty = false;
         boolean publEmpty = false;

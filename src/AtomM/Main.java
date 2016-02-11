@@ -103,6 +103,10 @@ public class Main {
             }
         }
 
+        if (site_new != null && !site_new.toLowerCase().startsWith("http://") && !site_new.toLowerCase().startsWith("https://")) {
+            site_new = "http://" + site_new;
+        }
+        
         String[] uFiles = new String[]{"users", "forum", "loads", "stat", "news", "comments"};
 
         Converter conv = new Converter(path, pref);
