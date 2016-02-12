@@ -11,7 +11,9 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URL;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -55,13 +57,16 @@ public class Converter {
 
     private String PASSWORD = null;
     private boolean USE_WEB_AVATARS = false;
+    private boolean USE_WEB_LOADS = false;
     private boolean NO_EMPTY = false;
     private boolean NO_IMAGE = false;
     private boolean PARSE_SMILE = false;
     private boolean NO_FIX = false;
+    private boolean NO_GROUPS = false;
     private String SITE_NAME_OLD = null;
     private String SITE_NAME_NEW = null;
     private Integer POST_ON_FORUM = null;
+    private int MAX_WEB_SIZE = 1 << 24; // 16 Mb
 
     private int VERSION = 0;
 
@@ -70,11 +75,6 @@ public class Converter {
     private TreeMap<String, String> uUsers = null;
     private TreeMap<String, String[]> uUsersMeta = null;
     private TreeMap<String, String[]> uThemesMeta = null;
-    private ArrayList uForumAttachDir = null;
-    private ArrayList uNewsAttachDir = null;
-    private ArrayList uBlogAttachDir = null;
-    private ArrayList uFaqAttachDir = null;
-    private ArrayList uStatAttachDir = null;
 
     private ArrayList uLoadsCat = null;
     private ArrayList uForumCat = null;
@@ -109,6 +109,10 @@ public class Converter {
         this.USE_WEB_AVATARS = USE_WEB_AVATARS;
     }
 
+    public void setWebLoads(boolean USE_WEB_LOADS) {
+        this.USE_WEB_LOADS = USE_WEB_LOADS;
+    }
+
     public void setNoEmpty(boolean NO_EMPTY) {
         this.NO_EMPTY = NO_EMPTY;
     }
@@ -125,6 +129,10 @@ public class Converter {
         this.NO_FIX = NO_FIX;
     }
 
+    public void setNoGroups(boolean NO_GROUPS) {
+        this.NO_GROUPS = NO_GROUPS;
+    }
+    
     public void setSiteName(String SITE_NAME_OLD, String SITE_NAME_NEW, Integer POST_ON_FORUM) {
         this.SITE_NAME_OLD = SITE_NAME_OLD;
         this.SITE_NAME_NEW = SITE_NAME_NEW;
@@ -306,6 +314,50 @@ public class Converter {
     }
 
     /**
+     * Загрузка файла.
+     *
+     * @param url путь к исходному файлу;
+     * @param new_filename путь к результирующему файлу.
+     * @return <tt>true</tt> если файл скопирован, иначе <tt>false</tt>.
+     */
+    private long loadFile(String url, String new_filename) {
+        if (url != null) {
+            try {
+                File new_file = new File(new_filename);
+                ReadableByteChannel ic = Channels.newChannel(new URL(url.replace(DS, "/")).openStream());
+                FileChannel oc = new FileOutputStream(new_file).getChannel();
+                long total = oc.transferFrom(ic, 0, MAX_WEB_SIZE);
+                ic.close();
+                oc.close();
+                return total;
+            } catch (Exception e) {
+                return -1;
+            }
+        } else {
+            return -1;
+        }
+    }
+
+    /**
+     * Загрузка файла.
+     *
+     * @param urls массив путей к исходному файлу;
+     * @param new_filename путь к результирующему файлу.
+     * @return <tt>true</tt> если файл скопирован, иначе <tt>false</tt>.
+     */
+    private long loadFile(String[] urls, String new_filename) {
+        if (urls != null && urls.length > 0) {
+            for (String url : urls) {
+                long total;
+                if ((total = loadFile(url, new_filename)) >= 0) {
+                    return total;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Проверка на существование каталога и его создание при отсуствии.
      *
      * @param path путь к каталогу;
@@ -357,6 +409,38 @@ public class Converter {
     }
 
     /**
+     * Возврат массива старых доменов сайта.
+     *
+     * @return массив со списком доменов.
+     */
+    private String[] getOldSites() {
+        String[] sites = {};
+        if (SITE_NAME_OLD != null) {
+            String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+            ArrayList<String> keys = new ArrayList<String>();
+            for (String site : old_sites) {
+                keys.add("http://" + site);
+                keys.add("http://www." + site);
+            }
+            sites = keys.size() > 0 ? keys.toArray(old_sites) : sites;
+        }
+        return sites;
+    }
+    
+    /**
+     * Возврат массива старых ссылок.
+     *
+     * @return массив со списком ссылок.
+     */
+    private String[] getOldLinks(String url) {
+        String[] urls = getOldSites();
+        for (int i = 0; i < urls.length; i++) {
+            urls[i] += url;
+        }
+        return urls;
+    }
+    
+    /**
      * Модификация ссылок.
      *
      * @param old_path старый путь (относительный или полный);
@@ -376,19 +460,21 @@ public class Converter {
             } else {
                 String old_url = (!old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
                 old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/") + old_url;
-                String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
-                ArrayList<String> keys = new ArrayList<String>();
-                for (String site : old_sites) {
-                    keys.add("http://" + site + old_url);
-                    keys.add("http://" + site + old_url + "/");
-                    keys.add("http://www." + site + old_url);
-                    keys.add("http://www." + site + old_url + "/");
-                }
-                for (String key : keys.toArray(old_sites)) {
+                for (String site : getOldSites()) {
                     if (new_path == null) {
-                        uLinks.put(key, null);
+                        if (old_url.endsWith("/")) {
+                            uLinks.put(site + old_url.substring(0, old_url.length()-1), null);
+                        } else {
+                            uLinks.put(site + old_url + "/", null);
+                        }
+                        uLinks.put(site + old_url, null);
                     } else {
-                        uLinks.put(key, new_url);
+                        if (old_url.endsWith("/")) {
+                            uLinks.put(site + old_url.substring(0, old_url.length()-1), new_url);
+                        } else {
+                            uLinks.put(site + old_url + "/", new_url);
+                        }
+                        uLinks.put(site + old_url, new_url);
                     }
                 }
             }
@@ -891,59 +977,46 @@ public class Converter {
         if (uRecord.length < 11) {
             return false;
         }
+        String path = FORUM_ATTACH_TABLES + ((Integer) (Integer.parseInt(uRecord[1]) / 100)).toString() + DS;
         String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             String[] attaches = uRecord[10].split("`");
-            if (uForumAttachDir != null && uForumAttachDir.size() > 0) {
-                for (int i = 0; i < attaches.length; i++) {
-                    if (attaches[i].length() > 0) {
-                        int pos = attaches[i].lastIndexOf('.');
-                        String ext = (pos >= 0) ? attaches[i].substring(pos) : "";
-                        String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
-                                || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
-                        String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS;
-                        String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[2], ext);
-                        boolean exist = false;
-                        for (int j = 0; j < uForumAttachDir.size(); j++) {
-                            String filename = "";
+            for (int i = 0; i < attaches.length; i++) {
+                if (attaches[i].length() > 0) {
+                    int pos = attaches[i].lastIndexOf('.');
+                    String ext = (pos >= 0) ? attaches[i].substring(pos) : "";
+                    String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                            || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
+                    String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS;
+                    String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[2], ext);
+                    String filename = path + ((is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) ? attaches[i].substring(1) : attaches[i]);
+                    if (copyFile(filename, new_path + new_filename)) {
+                        pos = filename.lastIndexOf(DUMP);
+                        if (pos >= 0) {
+                            updateLink(filename.substring(pos + DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                             if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
-                                filename = ((String) uForumAttachDir.get(j)) + attaches[i].substring(1);
-                            } else {
-                                filename = ((String) uForumAttachDir.get(j)) + attaches[i];
-                            }
-                            if (copyFile(filename, new_path + new_filename)) {
-                                pos = filename.lastIndexOf(DS + "_fr" + DS);
-                                if (pos >= 0) {
-                                    updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
-                                    if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
-                                        filename = ((String) uForumAttachDir.get(j)) + attaches[i];
-                                        if (filename.lastIndexOf(ext) >= 0) {
-                                            filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
-                                            pos = filename.lastIndexOf(DS + "_fr" + DS);
-                                            if (pos >= 0) {
-                                                updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
-                                            }
-                                        }
+                                filename = path + attaches[i];
+                                if (filename.lastIndexOf(ext) >= 0) {
+                                    filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
+                                    pos = filename.lastIndexOf(DUMP);
+                                    if (pos >= 0) {
+                                        updateLink(filename.substring(pos + DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                     }
                                 }
-                                exist = true;
-                                break;
                             }
                         }
-                        if (exist) {
-                            InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
-                            query_add.addItem("post_id", uRecord[0]);
-                            query_add.addItem("theme_id", uRecord[1]);
-                            query_add.addItem("user_id", id_author);
-                            query_add.addItem("attach_number", i + 1);
-                            query_add.addItem("filename", new_filename);
-                            query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length());
-                            query_add.addItem("date", parseDate(uRecord[2]));
-                            query_add.addItem("is_image", is_image);
-                            sqlData.add(query_add);
-                        } else {
-                            println("WARNING: Attachment \"" + attaches[i] + "\" not found.");
-                        }
+                        InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
+                        query_add.addItem("post_id", uRecord[0]);
+                        query_add.addItem("theme_id", uRecord[1]);
+                        query_add.addItem("user_id", id_author);
+                        query_add.addItem("attach_number", i + 1);
+                        query_add.addItem("filename", new_filename);
+                        query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length());
+                        query_add.addItem("date", parseDate(uRecord[2]));
+                        query_add.addItem("is_image", is_image);
+                        sqlData.add(query_add);
+                    } else {
+                        println("WARNING: Attachment \"" + attaches[i] + "\" not found.");
                     }
                 }
             }
@@ -1231,12 +1304,11 @@ public class Converter {
         if (uRecord[24] != null && !uRecord[24].isEmpty()) {
             download = loadsName(uRecord[24], uRecord[5]);
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
-            String path = LOADS_TABLES + ((Integer) (parseInt(uRecord[0], 0) / 100)).toString() + DS + filename;
-            if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                int pos = path.lastIndexOf(DS + "_ld" + DS);
-                if (pos >= 0) {
-                    updateLink(path.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                }
+            String old_path = LOADS_TABLES + ((Integer) (parseInt(uRecord[0], 0) / 100)).toString() + DS + filename;
+            String new_path = "files" + DS + "loads" + DS + download;
+            if (old_path.startsWith(DUMP) && (copyFile(old_path, new_path)
+                    || (USE_WEB_LOADS && (loadFile(getOldLinks(old_path.substring(DUMP.length() - 1).replace(DS, "/")), new_path) >= 0)))) {
+                updateLink(old_path.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path.replace(DS, "/"));
             } else {
                 println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
             }
@@ -1244,9 +1316,10 @@ public class Converter {
             String filename = trimUrl(uRecord[22]);
             if (filename != null) {
                 download = loadsName(uRecord[22], uRecord[5]);
-                String path = DUMP + filename.replace("/", DS);
-                if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                    updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
+                String old_path = DUMP + filename.replace("/", DS);
+                String new_path = "files" + DS + "loads" + DS + download;
+                if (copyFile(old_path, new_path) || (USE_WEB_LOADS && loadFile(uRecord[22], new_path) >= 0)) {
+                    updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + new_path.replace(DS, "/"));
                     output = "file://" + download; // TODO: Check return value
                 } else {
                     println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
@@ -1403,109 +1476,61 @@ public class Converter {
      * @return ссылки на вложение или <tt>null</tt>, если вложений нет.
      */
     private String parse_news_stage2(List sqlData, String[] uRecord, int mode) {
-        if (mode > 3) {
+        if (mode > 3 || (mode == 0 && uRecord.length < 25) || (mode == 1 && uRecord.length < 16)
+                || (mode == 2 && uRecord.length < 16) || (mode == 3 && uRecord.length < 18)) {
             return null;
         }
-        String files = null;
-        String date = null;
-        String author_name = null;
-        ArrayList<String> attachDir = null;
         String id = mode > 0 ? Integer.toString((parseInt(uRecord[0], 1) - 1) * 3 + mode) : uRecord[0];
-        String[] paths = {"_pu", "_nw", "_bl", "_fq"};
+        String files = mode == 0 ? uRecord[24] : (mode == 3 ? uRecord[17] : uRecord[15]);
+        String date = mode == 0 ? uRecord[5] : (mode == 3 ? uRecord[4] : uRecord[8]);
+        String author_name = mode == 0 ? uRecord[15] : (mode == 3 ? uRecord[13] : uRecord[10]);
+        String[] full_paths = {PUBL_ATTACH_TABLES, NEWS_ATTACH_TABLES, BLOG_ATTACH_TABLES, FAQ_ATTACH_TABLES};
         String[] new_paths = {"stat", "news", "news", "news"};
         String[] tables = {"stat_attaches", "news_attaches", "news_attaches", "news_attaches"};
-        switch (mode) {
-            case 0:
-                if (uRecord.length < 25) {
-                    return null;
-                }
-                files = uRecord[24];
-                date = uRecord[5];
-                author_name = uRecord[15];
-                attachDir = uStatAttachDir;
-                break;
-            case 1:
-                if (uRecord.length < 16) {
-                    return null;
-                }
-                files = uRecord[15];
-                date = uRecord[8];
-                author_name = uRecord[10];
-                attachDir = uNewsAttachDir;
-                break;
-            case 2:
-                if (uRecord.length < 16) {
-                    return null;
-                }
-                files = uRecord[15];
-                date = uRecord[8];
-                author_name = uRecord[10];
-                attachDir = uBlogAttachDir;
-                break;
-            case 3:
-                if (uRecord.length < 18) {
-                    return null;
-                }
-                files = uRecord[17];
-                date = uRecord[4];
-                author_name = uRecord[13];
-                attachDir = uFaqAttachDir;
-                break;
-            default:
-                return null;
-        }
         String author_id = (uUsers.get(author_name) != null && !(uUsers.get(author_name)).isEmpty()) ? uUsers.get(author_name) : "0";
-        // TODO: String path = DUMP + paths[mode] + DS + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS;
+        String path = full_paths[mode] + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS;
         String output = "";
         String[] attaches = files.split("\\|");
         if (attaches != null && attaches.length > 0) {
             for (int i = 0; i < attaches.length; i++) {
                 if (attaches[i] != null && !attaches[i].isEmpty()) {
                     String[] parts = attaches[i].split("`");
-                    if (attachDir != null && attachDir.size() > 0 && parts.length > 1) {
+                    if (parts.length > 1) {
                         String ext = (parts[1].isEmpty()) ? "" : "." + parts[1];
                         String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
                                 || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
                         String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + new_paths[mode] + DS;
                         String new_filename = attachesName(id, Integer.toString(i + 1), date, ext);
-                        boolean exist = false;
-                        for (int j = 0; j < attachDir.size(); j++) {
-                            String filename = ((String) attachDir.get(j)) + parts[0] + ext;
-                            // TODO: String filename = path + parts[0] + ext;
-                            if (copyFile(filename, new_path + new_filename)) {
-                                exist = true;
-                                if (VERSION > 3) { // 1.2 beta и новее
-                                    InsertQuery query_add = new InsertQuery(PREF + tables[mode]);
-                                    query_add.addItem("entity_id", id);
-                                    query_add.addItem("user_id", author_id);
-                                    query_add.addItem("attach_number", i + 1);
-                                    query_add.addItem("filename", new_filename);
-                                    query_add.addItem("size", new File(new_path + new_filename).length());
-                                    query_add.addItem("date", parseDate(date));
-                                    query_add.addItem("is_image", is_image);
-                                    sqlData.add(query_add);
-                                } else { // Старше 1.2 beta
-                                    float size = (float) new File(new_path + new_filename).length() / 1024;
-                                    output += String.format("<br />Вложение %d: <a href=\"%s\">%s (%.3f Кбайт)</a>", i + 1,
-                                            SITE_NAME_NEW.toLowerCase() + "/sys/" + (new_path + new_filename).replace(DS, "/"),
-                                            parts[0] + ext, size);
-                                }
-                                int pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                if (pos >= 0) {
-                                    updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
-                                    if (is_image.equals("1")) {
-                                        filename = ((String) attachDir.get(j)) + "s" + parts[0] + ".jpg";
-                                        // TODO: filename = path + "s" + parts[0] + ".jpg";
-                                        pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                        if (pos >= 0) {
-                                            updateLink(filename.substring(pos), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
-                                        }
+                        String filename = path + parts[0] + ext;
+                        if (copyFile(filename, new_path + new_filename)) {
+                            if (VERSION > 3) { // 1.2 beta и новее
+                                InsertQuery query_add = new InsertQuery(PREF + tables[mode]);
+                                query_add.addItem("entity_id", id);
+                                query_add.addItem("user_id", author_id);
+                                query_add.addItem("attach_number", i + 1);
+                                query_add.addItem("filename", new_filename);
+                                query_add.addItem("size", new File(new_path + new_filename).length());
+                                query_add.addItem("date", parseDate(date));
+                                query_add.addItem("is_image", is_image);
+                                sqlData.add(query_add);
+                            } else { // Старше 1.2 beta
+                                float size = (float) new File(new_path + new_filename).length() / 1024;
+                                output += String.format("<br />Вложение %d: <a href=\"%s\">%s (%.3f Кбайт)</a>", i + 1,
+                                        SITE_NAME_NEW.toLowerCase() + "/sys/" + (new_path + new_filename).replace(DS, "/"),
+                                        parts[0] + ext, size);
+                            }
+                            int pos = filename.indexOf(DUMP);
+                            if (pos >= 0) {
+                                updateLink(filename.substring(pos + DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
+                                if (is_image.equals("1")) {
+                                    filename = path + "s" + parts[0] + ".jpg";
+                                    pos = filename.indexOf(DUMP);
+                                    if (pos >= 0) {
+                                        updateLink(filename.substring(pos + DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path + new_filename);
                                     }
                                 }
-                                break;
                             }
-                        }
-                        if (!exist) {
+                        } else {
                             println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
                         }
                     }
@@ -1590,18 +1615,18 @@ public class Converter {
         String last_visit = "";
         String locked = "0";
         String activation = uRecord[23].equals("0") ? "" : uRecord[23];
-        try {
-            String[] str = uUsersMeta.get(uRecord[0]);
-            if (str != null) {
-                posts = str[9];
-                status = ((Integer.parseInt(str[2]) <= 4) ? str[2] : "1"); // TODO: Groups
-                last_visit = str[18];
-                locked = ((Integer.parseInt(str[2]) == 255) ? "1" : str[3]);
-            } else {
-                posts = "0";
-                status = "1";
+        String[] str = uUsersMeta.get(uRecord[0]);
+        if (str != null) {
+            posts = str[9];
+            status = ((NO_GROUPS || parseInt(str[2], 1) <= 4) ? str[2] : "1");
+            if (!status.equalsIgnoreCase(str[2])) {
+                println("WARNING: Group for user \"" + uRecord[0] + "\" changed from \"" + str[2] + "\" to \"" + status + "\".");
             }
-        } catch (Exception e) {
+            last_visit = str[18];
+            locked = ((Integer.parseInt(str[2]) == 255) ? "1" : str[3]);
+        } else {
+            posts = "0";
+            status = "1";
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1700,7 +1725,7 @@ public class Converter {
                         new_file.setLastModified(file.lastModified());
                     }
                 } else {
-                    println("WARNING: File \"" + file.getName() + "\" not found. Avatar for user \"" + uRecord[0] + "\" not created.");
+                    println("WARNING: " + (file != null ? "File \"" + file.getName() + "\" not found. " : "") + "Avatar for user \"" + uRecord[0] + "\" not created.");
                 }
             } catch (Exception e) {
                 println("WARNING: Avatar for user \"" + uRecord[0] + "\" not created.");
@@ -2134,15 +2159,11 @@ public class Converter {
                     createDir("avatars", "Avatars not supported.", true);
                 } else if (uTables[i][j].equals("fr_fr") || uTables[i][j].equals("forum") || uTables[i][j].equals("forump")) {
                     // Инициализация папок для работы с вложениями
-                    uForumAttachDir = new ArrayList();
                     File attachDir = new File(FORUM_ATTACH_TABLES);
                     if (attachDir.exists()) {
-                        for (String attach_cat : attachDir.list()) {
-                            uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cat + DS);
-                        }
-                        if (!createDir("files" + DS + "forum", "Attachments for forum not supported.", true)
-                                || (VERSION >= 11 && !createDir("images" + DS + "forum", "Attachments for forum not supported.", true))) {
-                            uForumAttachDir.clear();
+                        createDir("files" + DS + "forum", "Attachments for forum not supported.", true);
+                        if (VERSION >= 11) {
+                            createDir("images" + DS + "forum", "Attachments for forum not supported.", true);
                         }
                     } else {
                         println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments for forum not supported.");
@@ -2153,15 +2174,11 @@ public class Converter {
                 } else if (uTables[i][j].equals("pu_pu") || uTables[i][j].equals("publ")) {
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
-                        uStatAttachDir = new ArrayList();
                         File attachDir = new File(PUBL_ATTACH_TABLES);
                         if (attachDir.exists()) {
-                            for (String attach_cat : attachDir.list()) {
-                                uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cat + DS);
-                            }
-                            if (!createDir("files" + DS + "stat", "Attachments for publication not supported.", true)
-                                    || (VERSION >= 11 && !createDir("images" + DS + "stat", "Attachments for publication not supported.", true))) {
-                                uStatAttachDir.clear();
+                            createDir("files" + DS + "stat", "Attachments for publication not supported.", true);
+                            if (VERSION >= 11) {
+                                createDir("images" + DS + "stat", "Attachments for publication not supported.", true);
                             }
                         } else {
                             println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments for publication not supported.");
@@ -2171,37 +2188,22 @@ public class Converter {
                         || uTables[i][j].equals("news") || uTables[i][j].equals("blog") || uTables[i][j].equals("faq")) {
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
-                        uNewsAttachDir = new ArrayList();
-                        uBlogAttachDir = new ArrayList();
-                        uFaqAttachDir = new ArrayList();
                         File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                        if (newsAttachDir.exists()) {
-                            for (String attach_cat : newsAttachDir.list()) {
-                                uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cat + DS);
-                            }
-                        } else {
+                        if (!newsAttachDir.exists()) {
                             println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments for news not supported.");
                         }
                         File blogAttachDir = new File(BLOG_ATTACH_TABLES);
-                        if (blogAttachDir.exists()) {
-                            for (String attach_cat : blogAttachDir.list()) {
-                                uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cat + DS);
-                            }
-                        } else {
+                        if (!blogAttachDir.exists()) {
                             println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blog not supported.");
                         }
                         File faqAttachDir = new File(FAQ_ATTACH_TABLES);
-                        if (faqAttachDir.exists()) {
-                            for (String attach_cat : faqAttachDir.list()) {
-                                uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cat + DS);
-                            }
-                        } else {
+                        if (!faqAttachDir.exists()) {
                             println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQ not supported.");
                         }
                         // Результирующая папка
-                        if (!createDir("files" + DS + "news", "Attachments for news not supported.", true)
-                                || (VERSION >= 11 && !createDir("images" + DS + "news", "Attachments for news not supported.", true))) {
-                            uStatAttachDir.clear();
+                        createDir("files" + DS + "news", "Attachments for news not supported.", true);
+                        if (VERSION >= 11) {
+                            createDir("images" + DS + "news", "Attachments for news not supported.", true);
                         }
                     }
                 }

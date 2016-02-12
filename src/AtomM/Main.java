@@ -38,10 +38,12 @@ public class Main {
         boolean[] parse = new boolean[]{false, false, false, false, false, false};
         boolean sqlSplit = false;
         boolean useWebAvatars = false;
+        boolean useWebLoads = false;
         boolean noEmpty = false;
         boolean noImage = false;
         boolean parseSmile = false;
         boolean noFix = false;
+        boolean noGroups = false;
         int version = CURRENT_VERSION;
 
         for (int i = 0; i < args.length; i++) {
@@ -78,6 +80,8 @@ public class Main {
                 sqlSplit = true;
             } else if (args[i].equalsIgnoreCase("-wa")) {
                 useWebAvatars = true;
+            } else if (args[i].equalsIgnoreCase("-wl")) {
+                useWebLoads = true;
             } else if (args[i].equalsIgnoreCase("-noempty")) {
                 noEmpty = true;
             } else if (args[i].equalsIgnoreCase("-noimage")) {
@@ -86,6 +90,8 @@ public class Main {
                 parseSmile = true;
             } else if (args[i].equalsIgnoreCase("-nofix")) {
                 noFix = true;
+            } else if (args[i].equalsIgnoreCase("-nogroups")) {
+                noGroups = true;
             } else if (args[i].equalsIgnoreCase("-so")) {
                 site_old = (i + 1 < args.length) ? args[i + 1] : null;
             } else if (args[i].equalsIgnoreCase("-sn")) {
@@ -112,11 +118,13 @@ public class Main {
         Converter conv = new Converter(path, pref);
         conv.setPassword(password);
         conv.setWebAvatars(useWebAvatars);
+        conv.setWebLoads(useWebLoads);
         conv.setNoEmpty(noEmpty);
         conv.setNoImage(noImage);
         conv.setSmile(parseSmile);
         conv.setSiteName(site_old, site_new, postOnForum);
         conv.setNoFix(noFix);
+        conv.setNoGroups(noGroups);
         conv.setVersion(version);
 
         System.out.println("Stage 1: loading backup files...");
