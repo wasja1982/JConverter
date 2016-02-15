@@ -39,6 +39,7 @@ public class Main {
         boolean sqlSplit = false;
         boolean useWebAvatars = false;
         boolean useWebLoads = false;
+        boolean useWebAttaches = false;
         boolean noEmpty = false;
         boolean noImage = false;
         boolean parseSmile = false;
@@ -82,6 +83,8 @@ public class Main {
                 useWebAvatars = true;
             } else if (args[i].equalsIgnoreCase("-wl")) {
                 useWebLoads = true;
+            } else if (args[i].equalsIgnoreCase("-wt")) {
+                useWebAttaches = true;
             } else if (args[i].equalsIgnoreCase("-noempty")) {
                 noEmpty = true;
             } else if (args[i].equalsIgnoreCase("-noimage")) {
@@ -119,6 +122,7 @@ public class Main {
         conv.setPassword(password);
         conv.setWebAvatars(useWebAvatars);
         conv.setWebLoads(useWebLoads);
+        conv.setWebAttaches(useWebAttaches);
         conv.setNoEmpty(noEmpty);
         conv.setNoImage(noImage);
         conv.setSmile(parseSmile);
