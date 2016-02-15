@@ -79,6 +79,7 @@ public class Converter {
 
     private ArrayList uLoadsCat = null;
     private ArrayList uForumCat = null;
+    private ArrayList<String> uForumPost = null;
 
     private ArrayList[][] uData = {{null},
     {null, null, null},
@@ -910,6 +911,258 @@ public class Converter {
         return parse;
     }
 
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок форума.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_forum_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index[0].equals("0")) {
+                if (index.length >= 4) {
+                    if (index[3].equals("34")) {
+                        // Ленточный форум
+                        value = "/forum/last_posts/" + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
+                    } else if (index[3].equals("35")) {
+                        // Пользователи форума
+                        value = "/users/index/";
+                    } else if (index[3].equals("36")) {
+                        // Правила форума
+                        value = "/forum/";
+                    } else if (index[3].equals("37")) {
+                        // RSS для форума
+                        value = "/forum/rss/";
+                    } else if (index[3].equals("6")) {
+                        // Поиск для форума
+                        value = "/search/";
+                    } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) {
+                        // Сообщения пользователя
+                        value = "/forum/user_posts/" + index[4] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
+                    } else {
+                        value = "/forum/";
+                    }
+                } else {
+                    value = "/forum/";
+                }
+            } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) {
+                uForumCat.add(index[0]);
+            } else if (index.length == 2 || (index.length > 2 && index[2].isEmpty())) {
+                if (index[1].equals("0")) {
+                    // TODO: На разделы форума нет расширеных ссылок (предположение)
+                    value = "/forum/view_forum/" + index[0];
+                } else {
+                    value = "/forum/view_theme/" + index[1];
+                }
+            } else if (index.length == 3 || (index.length > 3 && index[3].isEmpty())) {
+                if (index[1].equals("0")) {
+                    // TODO: На разделы форума нет расширеных ссылок (предположение)
+                    value = "/forum/view_forum/" + index[0];
+                } else {
+                    value = "/forum/view_theme/" + index[1];
+                }
+                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
+                    value += "?page=" + index[2];
+                }
+            } else if (index.length >= 4) {
+                if (index[2].isEmpty() || index[2].equals("0")) {
+                    if (!index[1].isEmpty() && index[1].equals("17")) {
+                        value = "/forum/view_theme/" + index[1] + "?page=999";
+                    } else if (index[1].equals("0")) {
+                        // TODO: На разделы форума нет расширеных ссылок (предположение)
+                        value = "/forum/view_forum/" + index[0];
+                    } else {
+                        value = "/forum/view_theme/" + index[1];
+                    }
+                } else if (index[3].equals("16")) {
+                    uForumPost.add(url_id);
+                }
+            } else {
+                value = "/forum/";
+            }
+        } else {
+            value = "/forum/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок файлового архива.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_load_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            /*
+            http://site.ucoz.ru/load/0-0-0-0-1 добавление материала
+            http://site.ucoz.ru/load/0-0-0-1112-13 редактирование материала
+            http://site.ucoz.ru/load/0-0-0-1112-20 ссылка для скачивания материала
+            http://site.ucoz.ru/load/0-0-111-0-17 материалы пользователя
+
+            http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
+            http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
+            http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
+            http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
+            http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
+            http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
+             */
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) {
+                if (index[0].equals("0")) {
+                    value = "/loads/";
+                    if (index.length > 1) {
+                        value += "?page=" + index[1];
+                    }
+                } else {
+                    uLoadsCat.add(url_id);
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) {
+                value = "/loads/view/" + index[3];
+            } else if (index.length == 5) {
+                if (index[4] != null && !index[4].isEmpty()) {
+                    if (index[4].equals("1")) {
+                        // Добавление материала
+                        value = "/loads/add_form/";
+                    } else if (index[4].equals("16")) {
+                        // Неактивные материалы и ТОП-ы
+                        value = "/loads/";
+                    } else if (index[4].equals("17")) {
+                        // Материалы пользователя
+                        value = "/loads/";
+                    }
+                }
+            } else {
+                value = "/loads/";
+            }
+        } else {
+            value = "/loads/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок публикаций.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_publ_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            /*
+            http://site.ucoz.ru/publ/    каталог статей
+            http://site.ucoz.ru/publ/0-2 2-я страница каталога статей
+            http://site.ucoz.ru/publ/1     раздел/категория с ID=1
+            http://site.ucoz.ru/publ/1-2-2 2-я страница раздела/категории с ID=1
+            http://site.ucoz.ru/publ/4-1-0-5 материал c ID=5 из раздела/категории с ID=4
+             */
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок новостей.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_news_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            /*
+            http://site.ucoz.ru/news/  архив новостей
+            http://site.ucoz.ru/news/2 2-я страница архива
+            http://site.ucoz.ru/news/1-0-2 категория с ID=2
+            http://site.ucoz.ru/news/2-0-2 2-я страница категории с ID=2
+            http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
+            http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
+            http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
+            http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
+             */
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок блогов.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_blog_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            /*
+            http://site.ucoz.ru/blog/  блог
+            http://site.ucoz.ru/blog/2 2-я страница блога
+            http://site.ucoz.ru/blog/1-0-2 категория с ID=2
+            http://site.ucoz.ru/blog/2-0-2 2-я страница категории с ID=2
+            http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
+            http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
+            http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
+            http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
+             */
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок FAQ.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_faq_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            /*
+            http://site.ucoz.ru/faq/    FAQ
+            http://site.ucoz.ru/faq/0-2 2-я страница FAQ
+            http://site.ucoz.ru/faq/1     категория с ID=1
+            http://site.ucoz.ru/faq/1-2 2-я страница категории с ID=1
+            http://site.ucoz.ru/faq/0-0-3 материал c ID=3 без категории
+            http://site.ucoz.ru/faq/2-0-9 материал c ID=9 из категории с ID=2
+             */
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок пользователей.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_index_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index[0].equals("15")) {
+                // Пользователи сайта
+                value = "/users/index/";
+            } else if (index[0].equals("1")) {
+                // Страница входа
+                value = "/users/login_form/";
+            } else if (index[0].equals("3")) {
+                // Страница регистрации
+                value = "/users/add_form/";
+            } else if (index[0].equals("34")) {
+                // Комментарии пользователя index[1]
+            } else if (index[0].equals("8")) {
+                index = url_id.split("-", 3);
+                // Профиль пользователя с номером index[1] или именем index[2]
+                if (index.length == 2) {
+                    value = "/users/info/" + index[1];
+                } else if (index.length == 3 && index[1].equals("0")) {
+                    String user_id = (String) uUsers.get(index[2]);
+                    if (user_id != null) {
+                        value = "/users/info/" + user_id;
+                    }
+                }
+            }
+        } else {
+            value = "";
+        }
+        return value;
+    }
+    
     /**
      * Обработка файла "forum.txt" (этап 3) - конвертация тем форума.
      *
@@ -1783,12 +2036,8 @@ public class Converter {
         uLinks = new TreeMap();
         uLoadsCat = new ArrayList();
         uForumCat = new ArrayList();
-        ArrayList<String> uForumPost = new ArrayList();
-        atmData = new ArrayList<ArrayList>();
-        for (String[] uTable : uTables) {
-            atmData.add(new ArrayList());
-        }
-
+        uForumPost = new ArrayList();
+        // Загрузка файлов бекапа Ucoz
         for (int i = 0; i < uTables.length; i++) {
             if (!parseAll && !parse[i]) {
                 for (int j = 0; j < uTables[i].length; j++) {
@@ -1831,260 +2080,45 @@ public class Converter {
                                 if (uRecord[k].contains("&#124;")) {
                                     uRecord[k] = uRecord[k].replace("&#124;", "|");
                                 }
-                                if (SITE_NAME_OLD == null) {
-                                    continue;
-                                }
-                                int next = 0;
-                                String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
-                                ArrayList<String> keys = new ArrayList<String>();
-                                for (String site : old_sites) {
-                                    keys.add("http://" + site);
-                                    keys.add("http://www." + site);
-                                }
-                                boolean found = false;
-                                int found_index = -1;
-                                int start = uRecord[k].length();
-                                for (int l = 0; l < keys.size(); l++) {
-                                    int pos = uRecord[k].indexOf(keys.get(l), next);
-                                    if (pos >= 0 && pos < start) {
-                                        found = true;
-                                        found_index = l;
-                                        start = pos;
-                                    }
-                                }
-                                while (found && next >= 0 && next < uRecord[k].length()) {
-                                    String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
-                                    int end = uRecord[k].length();
-                                    for (String pos_break : breaks) {
-                                        int pos = uRecord[k].indexOf(pos_break, start + keys.get(found_index).length());
-                                        if (pos > 0 && pos < end) {
-                                            end = pos;
-                                        }
-                                    }
-                                    String key = uRecord[k].substring(start, end);
-                                    if (key != null && uLinks != null && !uLinks.containsKey(key)) {
-                                        String value = null;
-                                        String[] record = null;
-                                        if (key.contains("?")) {
-                                            record = key.substring(0, key.indexOf("?")).split("/");
-                                        } else {
-                                            record = key.split("/");
-                                        }
-                                        if (record.length > 3) {
-                                            String url_id = (record.length > 4) ? record[record.length - 1] : null;
-                                            /*
-                                            String url_id = null;
-                                            if (record.length == 5) {
-                                                url_id = record[4];
-                                            } else if (record.length == 6) {
-                                                url_id = record[5];
-                                            }
-                                             */
-                                            if (record[3].equals("forum")) {
-                                                if (url_id != null) {
-                                                    String[] index = url_id.split("-");
-                                                    if (index.length > 0 && index[0].equals("0")) {
-                                                        if (index.length >= 4) {
-                                                            if (index[3].equals("34")) {
-                                                                // Ленточный форум
-                                                                value = "/forum/last_posts/" + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
-                                                            } else if (index[3].equals("35")) {
-                                                                // Пользователи форума
-                                                                value = "/users/index/";
-                                                            } else if (index[3].equals("36")) {
-                                                                // Правила форума
-                                                                value = "/forum/";
-                                                            } else if (index[3].equals("37")) {
-                                                                // RSS для форума
-                                                                value = "/forum/rss/";
-                                                            } else if (index[3].equals("6")) {
-                                                                // Поиск для форума
-                                                                value = "/search/";
-                                                            } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) {
-                                                                // Сообщения пользователя
-                                                                value = "/forum/user_posts/" + index[4] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
-                                                            } else {
-                                                                value = "/forum/";
-                                                            }
-                                                        } else {
-                                                            value = "/forum/";
-                                                        }
-                                                    } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) {
-                                                        uForumCat.add(index[0]);
-                                                    } else if (index.length == 2 || (index.length > 2 && index[2].isEmpty())) {
-                                                        if (index[1].equals("0")) {
-                                                            // TODO: На разделы форума нет расширеных ссылок (предположение)
-                                                            value = "/forum/view_forum/" + index[0];
-                                                        } else {
-                                                            value = "/forum/view_theme/" + index[1];
-                                                        }
-                                                    } else if (index.length == 3 || (index.length > 3 && index[3].isEmpty())) {
-                                                        if (index[1].equals("0")) {
-                                                            // TODO: На разделы форума нет расширеных ссылок (предположение)
-                                                            value = "/forum/view_forum/" + index[0];
-                                                        } else {
-                                                            value = "/forum/view_theme/" + index[1];
-                                                        }
-                                                        if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                            value += "?page=" + index[2];
-                                                        }
-                                                    } else if (index.length >= 4) {
-                                                        if (index[2].isEmpty() || index[2].equals("0")) {
-                                                            if (!index[1].isEmpty() && index[1].equals("17")) {
-                                                                value = "/forum/view_theme/" + index[1] + "?page=999";
-                                                            } else if (index[1].equals("0")) {
-                                                                // TODO: На разделы форума нет расширеных ссылок (предположение)
-                                                                value = "/forum/view_forum/" + index[0];
-                                                            } else {
-                                                                value = "/forum/view_theme/" + index[1];
-                                                            }
-                                                        } else if (index[3].equals("16")) {
-                                                            uForumPost.add(url_id);
-                                                        }
-                                                    } else {
-                                                        value = "/forum/";
-                                                    }
-                                                } else {
-                                                    value = "/forum/";
-                                                }
-                                            } else if (record[3].equals("load")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/load/0-0-0-0-1 добавление материала
-                                                    http://site.ucoz.ru/load/0-0-0-1112-13 редактирование материала
-                                                    http://site.ucoz.ru/load/0-0-0-1112-20 ссылка для скачивания материала
-                                                    http://site.ucoz.ru/load/0-0-111-0-17 материалы пользователя
-
-                                                    http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
-                                                    http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
-                                                    http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
-                                                    http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
-                                                    http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
-                                                    http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
-                                                     */
-                                                    String[] index = url_id.split("-");
-                                                    if (index.length > 0 && index.length < 4) {
-                                                        if (index[0].equals("0")) {
-                                                            value = "/loads/";
-                                                            if (index.length > 1) {
-                                                                value += "?page=" + index[1];
-                                                            }
-                                                        } else {
-                                                            uLoadsCat.add(url_id);
-                                                        }
-                                                    } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) {
-                                                        value = "/loads/view/" + index[3];
-                                                    } else if (index.length == 5) {
-                                                        if (index[4] != null && !index[4].isEmpty()) {
-                                                            if (index[4].equals("1")) {
-                                                                // Добавление материала
-                                                                value = "/loads/add_form/";
-                                                            } else if (index[4].equals("16")) {
-                                                                // Неактивные материалы и ТОП-ы
-                                                                value = "/loads/";
-                                                            } else if (index[4].equals("17")) {
-                                                                // Материалы пользователя
-                                                                value = "/loads/";
-                                                            }
-                                                        }
-                                                    } else {
-                                                        value = "/loads/";
-                                                    }
-                                                } else {
-                                                    value = "/loads/";
-                                                }
-                                            } else if (record[3].equals("publ")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/publ/    каталог статей
-                                                    http://site.ucoz.ru/publ/0-2 2-я страница каталога статей
-                                                    http://site.ucoz.ru/publ/1     раздел/категория с ID=1
-                                                    http://site.ucoz.ru/publ/1-2-2 2-я страница раздела/категории с ID=1
-                                                    http://site.ucoz.ru/publ/4-1-0-5 материал c ID=5 из раздела/категории с ID=4
-                                                     */
-                                                }
-                                            } else if (record[3].equals("news")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/news/  архив новостей
-                                                    http://site.ucoz.ru/news/2 2-я страница архива
-                                                    http://site.ucoz.ru/news/1-0-2 категория с ID=2
-                                                    http://site.ucoz.ru/news/2-0-2 2-я страница категории с ID=2
-                                                    http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-                                                    http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-                                                    http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-                                                    http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-                                                     */
-                                                }
-                                            } else if (record[3].equals("blog")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/blog/  блог
-                                                    http://site.ucoz.ru/blog/2 2-я страница блога
-                                                    http://site.ucoz.ru/blog/1-0-2 категория с ID=2
-                                                    http://site.ucoz.ru/blog/2-0-2 2-я страница категории с ID=2
-                                                    http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-                                                    http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-                                                    http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-                                                    http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-                                                     */
-                                                }
-                                            } else if (record[3].equals("faq")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/faq/    FAQ
-                                                    http://site.ucoz.ru/faq/0-2 2-я страница FAQ
-                                                    http://site.ucoz.ru/faq/1     категория с ID=1
-                                                    http://site.ucoz.ru/faq/1-2 2-я страница категории с ID=1
-                                                    http://site.ucoz.ru/faq/0-0-3 материал c ID=3 без категории
-                                                    http://site.ucoz.ru/faq/2-0-9 материал c ID=9 из категории с ID=2
-                                                     */
-                                                }
-                                            } else if (record[3].equals("index")) {
-                                                if (url_id != null) {
-                                                    String[] index = url_id.split("-");
-                                                    if (index[0].equals("15")) {
-                                                        // Пользователи сайта
-                                                        value = "/users/index/";
-                                                    } else if (index[0].equals("1")) {
-                                                        // Страница входа
-                                                        value = "/users/login_form/";
-                                                    } else if (index[0].equals("3")) {
-                                                        // Страница регистрации
-                                                        value = "/users/add_form/";
-                                                    } else if (index[0].equals("34")) {
-                                                        // Комментарии пользователя index[1]
-                                                    } else if (index[0].equals("8")) {
-                                                        index = url_id.split("-", 3);
-                                                        // Профиль пользователя с номером index[1] или именем index[2]
-                                                        if (index.length == 2) {
-                                                            value = "/users/info/" + index[1];
-                                                        } else if (index.length == 3 && index[1].equals("0")) {
-                                                            String user_id = (String) uUsers.get(index[2]);
-                                                            if (user_id != null) {
-                                                                value = "/users/info/" + user_id;
-                                                            }
-                                                        }
-                                                    }
-                                                } else {
-                                                    value = "";
-                                                }
-                                            }
-                                        } else if (record.length == 3) {
-                                            value = "";
-                                        }
-                                        updateLink(key, value);
-                                    }
-                                    next = end + 1;
-                                    found = false;
-                                    found_index = -1;
-                                    start = uRecord[k].length();
-                                    for (int l = 0; l < keys.size(); l++) {
-                                        int pos = uRecord[k].indexOf(keys.get(l), next);
+                                // Инициализация массива ссылок
+                                if (SITE_NAME_OLD != null) {
+                                    int next = 0;
+                                    String[] keys = getOldSites();
+                                    boolean found = false;
+                                    int found_index = -1;
+                                    int start = uRecord[k].length();
+                                    for (int l = 0; l < keys.length; l++) {
+                                        int pos = uRecord[k].indexOf(keys[l], next);
                                         if (pos >= 0 && pos < start) {
                                             found = true;
                                             found_index = l;
                                             start = pos;
+                                        }
+                                    }
+                                    while (found && next >= 0 && next < uRecord[k].length()) {
+                                        String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
+                                        int end = uRecord[k].length();
+                                        for (String pos_break : breaks) {
+                                            int pos = uRecord[k].indexOf(pos_break, start + keys[found_index].length());
+                                            if (pos > 0 && pos < end) {
+                                                end = pos;
+                                            }
+                                        }
+                                        String key = uRecord[k].substring(start, end);
+                                        if (key != null) {
+                                            updateLink(key, null);
+                                        }
+                                        next = end + 1;
+                                        found = false;
+                                        found_index = -1;
+                                        start = uRecord[k].length();
+                                        for (int l = 0; l < keys.length; l++) {
+                                            int pos = uRecord[k].indexOf(keys[l], next);
+                                            if (pos >= 0 && pos < start) {
+                                                found = true;
+                                                found_index = l;
+                                                start = pos;
+                                            }
                                         }
                                     }
                                 }
@@ -2112,6 +2146,49 @@ public class Converter {
                     } catch (Exception e) {
                         println(e.getMessage());
                     }
+                }
+            }
+        }
+        // Первоначальный парсинг ссылок
+        if (uLinks != null) {
+            for (String key : uLinks.keySet()) {
+                if (uLinks.get(key) == null) {
+                    String value = null;
+                    String[] record = null;
+                    if (key.contains("?")) {
+                        record = key.substring(0, key.indexOf("?")).split("/");
+                    } else {
+                        record = key.split("/");
+                    }
+                    if (record.length > 3) {
+                        String url_id = (record.length > 4) ? record[record.length - 1] : null;
+                        /*
+                        String url_id = null;
+                        if (record.length == 5) {
+                            url_id = record[4];
+                        } else if (record.length == 6) {
+                            url_id = record[5];
+                        }
+                         */
+                        if (record[3].equals("forum")) {
+                            value = parse_forum_stage1(url_id);
+                        } else if (record[3].equals("load")) {
+                            value = parse_load_stage1(url_id);
+                        } else if (record[3].equals("publ")) {
+                            value = parse_publ_stage1(url_id);
+                        } else if (record[3].equals("news")) {
+                            value = parse_news_stage1(url_id);
+                        } else if (record[3].equals("blog")) {
+                            value = parse_blog_stage1(url_id);
+                        } else if (record[3].equals("faq")) {
+                            value = parse_faq_stage1(url_id);
+                        } else if (record[3].equals("index")) {
+                            value = parse_index_stage1(url_id);
+                        }
+                    } else if (record.length == 3) {
+                        value = "";
+                    }
+                    updateLink(key, value);
                 }
             }
         }
@@ -2145,15 +2222,14 @@ public class Converter {
      * и т.п.).
      */
     public void linksUpdate() {
+        atmData = new ArrayList<ArrayList>();
         for (int i = 0; i < uTables.length; i++) {
-            for (int j = 0; j < uTables[i].length; j++) {
-                if (uData[i][j] == null) {
-                    continue;
-                }
-                if (uTables[i][j].equals("users")) {
+            atmData.add(new ArrayList());
+            if (uTables[i].length > 0) {
+                if (uTables[i][0].equals("users")) {
                     // Инициализация папки для работы с аватарами
                     createDir("avatars", "Avatars not supported.", true);
-                } else if (uTables[i][j].equals("fr_fr") || uTables[i][j].equals("forum") || uTables[i][j].equals("forump")) {
+                } else if (uTables[i][0].equals("fr_fr") || uTables[i][0].equals("forum") || uTables[i][0].equals("forump")) {
                     // Инициализация папок для работы с вложениями
                     File attachDir = new File(FORUM_ATTACH_TABLES);
                     if (attachDir.exists()) {
@@ -2164,24 +2240,29 @@ public class Converter {
                     } else {
                         println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments for forum not supported.");
                     }
-                } else if (uTables[i][j].equals("ld_ld") || uTables[i][j].equals("loads")) {
+                } else if (uTables[i][0].equals("ld_ld") || uTables[i][0].equals("loads")) {
                     // Инициализация папки для работы с файлами
-                    createDir("files" + DS + "loads", "Loads not supported.", false);
-                } else if (uTables[i][j].equals("pu_pu") || uTables[i][j].equals("publ")) {
+                    File attachDir = new File(LOADS_TABLES);
+                    if (attachDir.exists()) {
+                        createDir("files" + DS + "loads", "Loads not supported.", false);
+                    } else {
+                        println("WARNING: Path \"" + LOADS_TABLES + "\" not found. Loads not supported.");
+                    }
+                } else if (uTables[i][0].equals("pu_pu") || uTables[i][0].equals("publ")) {
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
                         File attachDir = new File(PUBL_ATTACH_TABLES);
                         if (attachDir.exists()) {
-                            createDir("files" + DS + "stat", "Attachments for publication not supported.", true);
+                            createDir("files" + DS + "stat", "Attachments for publications not supported.", true);
                             if (VERSION >= 11) {
-                                createDir("images" + DS + "stat", "Attachments for publication not supported.", true);
+                                createDir("images" + DS + "stat", "Attachments for publications not supported.", true);
                             }
                         } else {
-                            println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments for publication not supported.");
+                            println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments for publications not supported.");
                         }
                     }
-                } else if (uTables[i][j].equals("nw_nw") || uTables[i][j].equals("bl_bl") || uTables[i][j].equals("fq_fq")
-                        || uTables[i][j].equals("news") || uTables[i][j].equals("blog") || uTables[i][j].equals("faq")) {
+                } else if (uTables[i][0].equals("nw_nw") || uTables[i][0].equals("bl_bl") || uTables[i][0].equals("fq_fq")
+                        || uTables[i][0].equals("news") || uTables[i][0].equals("blog") || uTables[i][0].equals("faq")) {
                     if (VERSION > 2) { // 1.1.9 и новее
                         // Инициализация папок для работы с вложениями
                         File newsAttachDir = new File(NEWS_ATTACH_TABLES);
@@ -2190,11 +2271,11 @@ public class Converter {
                         }
                         File blogAttachDir = new File(BLOG_ATTACH_TABLES);
                         if (!blogAttachDir.exists()) {
-                            println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blog not supported.");
+                            println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blogs not supported.");
                         }
                         File faqAttachDir = new File(FAQ_ATTACH_TABLES);
                         if (!faqAttachDir.exists()) {
-                            println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQ not supported.");
+                            println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQs not supported.");
                         }
                         // Результирующая папка
                         createDir("files" + DS + "news", "Attachments for news not supported.", true);
@@ -2202,6 +2283,11 @@ public class Converter {
                             createDir("images" + DS + "news", "Attachments for news not supported.", true);
                         }
                     }
+                }
+            }
+            for (int j = 0; j < uTables[i].length; j++) {
+                if (uData[i][j] == null) {
+                    continue;
                 }
                 for (int k = 0; k < uData[i][j].size(); k++) {
                     String[] uRecord = (String[]) uData[i][j].get(k);
