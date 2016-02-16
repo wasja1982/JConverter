@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 import java.util.TreeMap;
 import org.xml.sax.InputSource;
@@ -78,8 +79,6 @@ public class Converter {
     private TreeMap<String, String[]> uThemesMeta = null;
 
     private ArrayList uLoadsCat = null;
-    private ArrayList uForumCat = null;
-    private ArrayList<String> uForumPost = null;
 
     private ArrayList[][] uData = {{null},
     {null, null, null},
@@ -513,6 +512,40 @@ public class Converter {
     }
     
     /**
+     * Возврат мета-данных, привязанных к ID записей.
+     *
+     * @param table имя таблицы, для которой необходимы мета-данные.
+     * @return мета-данные.
+     */
+    private TreeMap<String, String[]> getMeta(String table) {
+        TreeMap<String, String[]> uMeta = new TreeMap<String, String[]>();
+        int x = -1;
+        int y = -1;
+        boolean found = false;
+        for (int i = 0; i < uTables.length; i++) {
+            if (found) break;
+            for (int j = 0; j < uTables[i].length; j++) {
+                if (table.equalsIgnoreCase(uTables[i][j])) {
+                    x = i;
+                    y = j;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (x >= 0 && y >= 0 && uData[x][y] != null && !uData[x][y].isEmpty()) {
+            for (int k = 0; k < uData[x][y].size(); k++) {
+                String[] uRecord = (String[])uData[x][y].get(k);
+                if (uRecord.length > 0 && !uRecord[0].isEmpty()) {
+                    uMeta.put(uRecord[0], uRecord);
+                }
+            }
+        }
+        return uMeta;
+    }
+    
+    
+    /**
      * Перевод строки в число.
      *
      * @param str строка, содержащая число;
@@ -916,29 +949,37 @@ public class Converter {
      *
      * @param url_id ссылка.
      */
-    private String parse_forum_stage1(String url_id) {
+    private String parse_forum_stage1(String url_id, TreeMap<String, String[]> uForumsMeta, TreeMap<String, Object[]> uPosts) {
         String value = null;
         if (url_id != null) {
             String[] index = url_id.split("-");
             if (index.length > 0 && index[0].equals("0")) {
                 if (index.length >= 4) {
-                    if (index[3].equals("34")) {
-                        // Ленточный форум
-                        value = "/forum/last_posts/" + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
-                    } else if (index[3].equals("35")) {
-                        // Пользователи форума
+                    if (index[3].equals("34")) {// http://site.ucoz.ru/forum/0-0-1-34 Ленточный форум
+                        boolean page = !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1");
+                        value = "/forum/last_posts/" + (page ? "?page=" + index[2] : "");
+                        if (index.length >= 5 && !index[4].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[4].equals("1")) value += "title&asc=1";
+                            else if (index[4].equals("2")) value += "title";
+                            else if (index[4].equals("3")) value += "posts&asc=1";
+                            else if (index[4].equals("4")) value += "posts";
+                            else if (index[4].equals("5")) value += "views&asc=1";
+                            else if (index[4].equals("6")) value += "views";
+                            else if (index[4].equals("7")) value += ""; // TODO: Автор темы
+                            else if (index[4].equals("8")) value += ""; // TODO: Автор темы
+                            else if (index[4].equals("9")) value += "last_post&asc=1";
+                            else if (index[4].equals("10")) value += "last_post";
+                        }
+                    } else if (index[3].equals("35")) { // http://site.ucoz.ru/forum/0-0-1-35 Пользователи форума
                         value = "/users/index/";
-                    } else if (index[3].equals("36")) {
-                        // Правила форума
-                        value = "/forum/";
-                    } else if (index[3].equals("37")) {
-                        // RSS для форума
+                    } else if (index[3].equals("36")) { // http://site.ucoz.ru/forum/0-0-0-36 Правила форума
+                        value = "/forum/"; // TODO: Правила форума 
+                   } else if (index[3].equals("37")) { // http://site.ucoz.ru/forum/0-0-0-37 RSS для форума
                         value = "/forum/rss/";
-                    } else if (index[3].equals("6")) {
-                        // Поиск для форума
+                    } else if (index[3].equals("6")) {// http://site.ucoz.ru/forum/0-0-0-6 Поиск для форума
                         value = "/search/";
-                    } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) {
-                        // Сообщения пользователя
+                    } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) { // http://site.ucoz.ru/forum/0-0-1-3-1 Сообщения пользователя
                         value = "/forum/user_posts/" + index[4] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
                     } else {
                         value = "/forum/";
@@ -946,37 +987,61 @@ public class Converter {
                 } else {
                     value = "/forum/";
                 }
-            } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) {
-                uForumCat.add(index[0]);
-            } else if (index.length == 2 || (index.length > 2 && index[2].isEmpty())) {
+            } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) { // http://site.ucoz.ru/forum/1 Категория форума или форум
+                if (uForumsMeta != null && uForumsMeta.containsKey(index[0])) {
+                    String[] uRecord = uForumsMeta.get(index[0]);
+                    if (uRecord.length >= 2 && (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0"))) {
+                        value = "/forum" + (VERSION < 9 ? "/index/" + index[0] : "");
+                    } else {
+                        value = "/forum/view_forum/" + index[0];
+                    }
+                }
+            } else if ((index.length == 2 || (index.length > 2 && index[2].isEmpty())) // http://site.ucoz.ru/forum/1-1 Тема форума
+                    || (index.length == 3 || (index.length > 3 && index[3].isEmpty()))) { // http://site.ucoz.ru/forum/1-1-1 Тема форума с номером страницы
                 if (index[1].equals("0")) {
-                    // TODO: На разделы форума нет расширеных ссылок (предположение)
                     value = "/forum/view_forum/" + index[0];
                 } else {
-                    value = "/forum/view_theme/" + index[1];
-                }
-            } else if (index.length == 3 || (index.length > 3 && index[3].isEmpty())) {
-                if (index[1].equals("0")) {
-                    // TODO: На разделы форума нет расширеных ссылок (предположение)
-                    value = "/forum/view_forum/" + index[0];
-                } else {
-                    value = "/forum/view_theme/" + index[1];
-                }
-                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                    value += "?page=" + index[2];
+                    value = "/forum/view_theme/" + index[1] + (index.length > 2 && !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
                 }
             } else if (index.length >= 4) {
                 if (index[2].isEmpty() || index[2].equals("0")) {
-                    if (!index[1].isEmpty() && index[1].equals("17")) {
-                        value = "/forum/view_theme/" + index[1] + "?page=999";
+                    if (!index[3].isEmpty() && index[3].equals("17")) { // http://site.ucoz.ru/forum/1-1-0-17-1 Последнее сообщение темы
+                        value = "/forum/view_theme/" + index[1];
+                        if (VERSION >= 10) { // AtomM 4 и новее
+                            if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                                String theme_id = index.length > 1 ? index[1] : null;
+                                if (uThemesMeta != null && uThemesMeta.containsKey(theme_id)) {
+                                    String[] uTheme = uThemesMeta.get(theme_id);
+                                    int countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
+                                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                                    value += "?page=" + page + "#post" + countPost;
+                                }
+                            }
+                        } else { // Старше AtomM 4
+                            value += "?page=999";
+                        }
                     } else if (index[1].equals("0")) {
-                        // TODO: На разделы форума нет расширеных ссылок (предположение)
                         value = "/forum/view_forum/" + index[0];
                     } else {
-                        value = "/forum/view_theme/" + index[1];
+                        value = "/forum/view_theme/" + index[1] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
                     }
-                } else if (index[3].equals("16")) {
-                    uForumPost.add(url_id);
+                } else if (index[3].equals("16")) { // http://site.ucoz.ru/forum/1-1-1-16-1350000000 Обработка ссылок на посты форума
+                    if (VERSION >= 6) {
+                        value = "/forum/view_post/" + index[2];
+                    } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                        if (uPosts != null && uPosts.containsKey(index[2])) {
+                            Object[] entry = uPosts.get(index[2]);
+                            if (entry != null && entry.length > 1) {
+                                String theme_id = (String)entry[1];
+                                if (theme_id == null || theme_id.isEmpty()) theme_id = index.length > 1 ? index[1] : null;
+                                if (theme_id != null && !theme_id.isEmpty()) {
+                                    int countPost = (Integer)entry[0];
+                                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                                    value = "/forum/view_theme/" + theme_id + "?page=" + page + "#post" + countPost;
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 value = "/forum/";
@@ -1188,7 +1253,6 @@ public class Converter {
         if (VERSION > 0) {
             query.addItem("description", addslashes(uRecord[9]));
         }
-        uThemesMeta.put(uRecord[0], uRecord);
         sqlData.add(query);
         return true;
     }
@@ -1271,33 +1335,6 @@ public class Converter {
                     } else {
                         println("WARNING: Attachment \"" + attaches[i] + "\" [forum post ID=\"" + uRecord[0] + "\"] not found.");
                     }
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Обработка файла "fr_fr.txt" (этап 2) - конвертация ссылок на разделы
-     * форума и форумы.
-     *
-     * @param uRecord массив строк, содержащий данные о разделах и форумах.
-     */
-    private boolean parse_fr_fr_stage2(List sqlData, String[] uRecord) {
-        if (uRecord.length < 2) {
-            return false;
-        }
-        if (uRecord[0] != null) {
-            for (int i = uForumCat.size() - 1; i >= 0; i--) {
-                if (uRecord[0].equals(uForumCat.get(i))) {
-                    uForumCat.remove(uRecord[0]);
-                    String value = null;
-                    if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
-                        value = "/forum/index/" + uRecord[0];
-                    } else {
-                        value = "/forum/view_forum/" + uRecord[0];
-                    }
-                    updateLink("/forum/" + uRecord[0], value);
                 }
             }
         }
@@ -2035,8 +2072,6 @@ public class Converter {
     public void loadBackups(boolean parseAll, boolean[] parse) {
         uLinks = new TreeMap();
         uLoadsCat = new ArrayList();
-        uForumCat = new ArrayList();
-        uForumPost = new ArrayList();
         // Загрузка файлов бекапа Ucoz
         for (int i = 0; i < uTables.length; i++) {
             if (!parseAll && !parse[i]) {
@@ -2149,6 +2184,41 @@ public class Converter {
                 }
             }
         }
+        // Инициализация данных для первоначального парсинга ссылок
+        TreeMap<String, String[]> uForumsMeta = getMeta("fr_fr");
+        TreeMap<String, Object[]> uPosts = null;
+        if (VERSION >= 10) { // AtomM 4 и новее
+            uThemesMeta = getMeta("forum");
+        }
+        if (VERSION < 6) { // Старше Fapos 2.1 RC7
+            uPosts = new TreeMap<String, Object[]>();
+            TreeMap<String, Integer> uThemes = new TreeMap<String, Integer>();
+            TreeMap<String, String[]> uPostsMeta = getMeta("forump");
+            int max_id = -1;
+            for (String id : uPostsMeta.keySet()) {
+                if (parseInt(id, -1) > max_id) {
+                    max_id = parseInt(id, -1);
+                }
+            }
+            for (int i = 0; i < max_id; i++) {
+                String id = Integer.toString(i);
+                if (uPostsMeta.containsKey(id)) {
+                    String[] uRecord = uPostsMeta.get(id);
+                    if (uRecord != null && uRecord.length > 1 && !uRecord[1].isEmpty()) {
+                        String theme_id = uRecord[1];
+                        int countPosts = 0;
+                        if (uThemes.containsKey(theme_id)) {
+                            countPosts = uThemes.get(theme_id);
+                        }
+                        countPosts++;
+                        uThemes.put(theme_id, countPosts);
+                        Object[] entry = {countPosts, theme_id};
+                        uPosts.put(id, entry);
+                    }
+                }
+            }
+        }
+        
         // Первоначальный парсинг ссылок
         if (uLinks != null) {
             for (String key : uLinks.keySet()) {
@@ -2171,7 +2241,7 @@ public class Converter {
                         }
                          */
                         if (record[3].equals("forum")) {
-                            value = parse_forum_stage1(url_id);
+                            value = parse_forum_stage1(url_id, uForumsMeta, uPosts);
                         } else if (record[3].equals("load")) {
                             value = parse_load_stage1(url_id);
                         } else if (record[3].equals("publ")) {
@@ -2191,29 +2261,6 @@ public class Converter {
                     updateLink(key, value);
                 }
             }
-        }
-        // Обработка ссылок на посты форума
-        for (int i = uForumPost.size() - 1; i >= 0; i--) {
-            String url_id = uForumPost.get(i);
-            if (url_id != null) {
-                String[] parts = url_id.split("-");
-                Integer countPost = 1;
-                String theme_id = parts.length > 1 ? parts[1] : null;
-                String post_id = parts.length > 2 ? parts[2] : null;
-                if (VERSION < 6 && uThemesMeta != null && uThemesMeta.containsKey(theme_id)) {
-                    String[] uTheme = uThemesMeta.get(theme_id);
-                    countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
-                }
-                if (VERSION >= 6) {
-                    String value = "/forum/view_post/" + post_id;
-                    updateLink("/forum/" + url_id, value);
-                } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
-                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
-                    String value = "/forum/view_theme/" + theme_id + "?page=" + page + "#post" + countPost;
-                    updateLink("/forum/" + url_id, value);
-                }
-            }
-            uForumPost.remove(url_id);
         }
     }
 
@@ -2294,7 +2341,7 @@ public class Converter {
                     if (uTables[i][j].equals("users")) {
                         parse_users_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("fr_fr")) {
-                        parse_fr_fr_stage2(atmData.get(i), uRecord);
+                        // parse_fr_fr_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("forump")) {
                         parse_forump_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("ld_ld")) {
@@ -2383,7 +2430,6 @@ public class Converter {
      * @return список, в котором лежат списки с SQL-запросами.
      */
     public ArrayList getSQL() {
-        uThemesMeta = new TreeMap();
         boolean forumEmpty = false;
         boolean loadsEmpty = false;
         boolean publEmpty = false;
