@@ -78,8 +78,6 @@ public class Converter {
     private TreeMap<String, String[]> uUsersMeta = null;
     private TreeMap<String, String[]> uThemesMeta = null;
 
-    private ArrayList uLoadsCat = null;
-
     private ArrayList[][] uData = {{null},
     {null, null, null},
     {null, null},
@@ -1057,44 +1055,51 @@ public class Converter {
      *
      * @param url_id ссылка.
      */
-    private String parse_load_stage1(String url_id) {
+    private String parse_load_stage1(String url_id, TreeMap<String, String[]> uLoadsMeta) {
         String value = null;
         if (url_id != null) {
-            /*
-            http://site.ucoz.ru/load/0-0-0-0-1 добавление материала
-            http://site.ucoz.ru/load/0-0-0-1112-13 редактирование материала
-            http://site.ucoz.ru/load/0-0-0-1112-20 ссылка для скачивания материала
-            http://site.ucoz.ru/load/0-0-111-0-17 материалы пользователя
-
-            http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
-            http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
-            http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
-            http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
-            http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
-            http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
-             */
             String[] index = url_id.split("-");
-            if (index.length > 0 && index.length < 4) {
+            if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/load/1-1 Категория
                 if (index[0].equals("0")) {
-                    value = "/loads/";
-                    if (index.length > 1) {
-                        value += "?page=" + index[1];
-                    }
+                    value = "/loads/" + (index.length > 1 ? "?page=" + index[1] : "");
                 } else {
-                    uLoadsCat.add(url_id);
+                    if (uLoadsMeta != null && uLoadsMeta.containsKey(index[0])) {
+                        String[] uRecord = uLoadsMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/loads/" + class_sections + "/" + index[0] + (index.length > 1 ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/loads/";
+                        }
+                    }
                 }
-            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) {
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/load/1-1-0-1 Материал
                 value = "/loads/view/" + index[3];
             } else if (index.length == 5) {
                 if (index[4] != null && !index[4].isEmpty()) {
-                    if (index[4].equals("1")) {
-                        // Добавление материала
+                    if (index[4].equals("1")) { // http://site.ucoz.ru/load/0-0-0-0-1 Добавление материала
                         value = "/loads/add_form/";
-                    } else if (index[4].equals("16")) {
-                        // Неактивные материалы и ТОП-ы
-                        value = "/loads/";
-                    } else if (index[4].equals("17")) {
-                        // Материалы пользователя
+                    } else if (index[4].equals("16")) { // Неактивные материалы и ТОП-ы
+                        boolean page = !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                        value = "/loads/" + (page ? "?page=" + index[1] : "");
+                        if (!index[2].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[2].equals("0")) value += "date"; // TODO: http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
+                            else if (index[2].equals("1")) value += "date"; // http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
+                            else if (index[2].equals("2")) value += "date"; // TODO: http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
+                            else if (index[2].equals("3")) value += "downloads"; // http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
+                            else if (index[2].equals("4")) value += "views"; // http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
+                            else if (index[2].equals("5")) value += "comments"; // http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
+                        }
+                        
+                    } else if (index[4].equals("17")) { // http://site.ucoz.ru/load/0-0-1-0-17 Материалы пользователя
+                        value = "/loads/" + (!index[2].isEmpty() && !index[2].equals("0") ? "user/" + index[2] : "")
+                                + (!index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1") ? "?page=" + index[1] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-13 Редактирование материала
+                        value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "edit_form/" + index[3] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-20 Ссылка для скачивания материала
+                        value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "download_file/" + index[3] : "");
+                    } else {
                         value = "/loads/";
                     }
                 }
@@ -1370,35 +1375,6 @@ public class Converter {
             query.addItem("description", addslashes(uRecord[6]));
         }
         sqlData.add(query);
-        return true;
-    }
-
-    /**
-     * Обработка файла "ld_ld.txt" (этап 2) - конвертация ссылок на разделы и
-     * категории.
-     *
-     * @param uRecord массив строк, содержащий данные о разделах и категориях.
-     */
-    private boolean parse_ld_ld_stage2(List sqlData, String[] uRecord) {
-        if (uRecord.length < 7) {
-            return false;
-        }
-        String class_sections = "category";
-        if (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) {
-            class_sections = "category";
-        } else {
-            class_sections = "section";
-        }
-        if (uRecord[0] != null) {
-            for (int i = uLoadsCat.size() - 1; i >= 0; i--) {
-                String name = (String) uLoadsCat.get(i);
-                String[] index = name.split("-");
-                if (index.length > 0 && uRecord[0].equals(index[0])) {
-                    uLoadsCat.remove(i);
-                    updateLink("/load/" + name, "/loads/" + class_sections + "/" + uRecord[0] + (index.length > 1 ? "?page=" + index[1] : ""));
-                }
-            }
-        }
         return true;
     }
 
@@ -2071,7 +2047,6 @@ public class Converter {
      */
     public void loadBackups(boolean parseAll, boolean[] parse) {
         uLinks = new TreeMap();
-        uLoadsCat = new ArrayList();
         // Загрузка файлов бекапа Ucoz
         for (int i = 0; i < uTables.length; i++) {
             if (!parseAll && !parse[i]) {
@@ -2186,6 +2161,7 @@ public class Converter {
         }
         // Инициализация данных для первоначального парсинга ссылок
         TreeMap<String, String[]> uForumsMeta = getMeta("fr_fr");
+        TreeMap<String, String[]> uLoadsMeta = getMeta("loads");
         TreeMap<String, Object[]> uPosts = null;
         if (VERSION >= 10) { // AtomM 4 и новее
             uThemesMeta = getMeta("forum");
@@ -2243,7 +2219,7 @@ public class Converter {
                         if (record[3].equals("forum")) {
                             value = parse_forum_stage1(url_id, uForumsMeta, uPosts);
                         } else if (record[3].equals("load")) {
-                            value = parse_load_stage1(url_id);
+                            value = parse_load_stage1(url_id, uLoadsMeta);
                         } else if (record[3].equals("publ")) {
                             value = parse_publ_stage1(url_id);
                         } else if (record[3].equals("news")) {
@@ -2345,7 +2321,7 @@ public class Converter {
                     } else if (uTables[i][j].equals("forump")) {
                         parse_forump_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("ld_ld")) {
-                        parse_ld_ld_stage2(atmData.get(i), uRecord);
+                        // parse_ld_ld_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("loads")) {
                         String str = parse_loads_stage2(atmData.get(i), uRecord);
                         if (str != null && !str.isEmpty()) {
