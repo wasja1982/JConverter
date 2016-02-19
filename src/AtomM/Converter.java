@@ -1228,17 +1228,34 @@ public class Converter {
      *
      * @param url_id ссылка.
      */
-    private String parse_faq_stage1(String url_id) {
+    private String parse_faq_stage1(String url_id, TreeMap<String, String[]> uFaqMeta) {
+        int mode = 3;
         String value = null;
         if (url_id != null) {
-            /*
-            http://site.ucoz.ru/faq/    FAQ
-            http://site.ucoz.ru/faq/0-2 2-я страница FAQ
-            http://site.ucoz.ru/faq/1     категория с ID=1
-            http://site.ucoz.ru/faq/1-2 2-я страница категории с ID=1
-            http://site.ucoz.ru/faq/0-0-3 материал c ID=3 без категории
-            http://site.ucoz.ru/faq/2-0-9 материал c ID=9 из категории с ID=2
-             */
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 3) {
+                boolean page = index.length > 1 && !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                if (index[0] == null || index[0].equals("0")) { // http://site.ucoz.ru/faq/0-2 2-я страница FAQ
+                    value = "/news/" + (page ? "?page=" + index[1] : "");
+                } else { // http://site.ucoz.ru/faq/1-2 2-я страница категории
+                    int id = (parseInt(index[0], 1) - 1) * 3 + mode;
+                    if (uFaqMeta != null && uFaqMeta.containsKey(index[0])) {
+                        String[] uRecord = uFaqMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/news/" + class_sections + "/" + id + (page ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/news/";
+                        }
+                    }
+                }
+            } else if (index.length >= 3 && index[2] != null && !index[2].isEmpty() && !index[2].equals("0")) { // http://site.ucoz.ru/faq/1-0-9 Материал
+                value = "/news/view/" + index[2];
+            } else {
+                value = "/news/";
+            }
+        } else {
+            value = "/news/";
         }
         return value;
     }
@@ -2273,7 +2290,7 @@ public class Converter {
                         } else if (record[3].equals("blog")) {
                             value = parse_news_stage1(url_id, getMeta("bl_bl"), 2);
                         } else if (record[3].equals("faq")) {
-                            value = parse_faq_stage1(url_id);
+                            value = parse_faq_stage1(url_id, getMeta("fq_fq"));
                         } else if (record[3].equals("index")) {
                             value = parse_index_stage1(url_id);
                         }
