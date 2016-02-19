@@ -40,6 +40,8 @@ public class FConverter extends javax.swing.JFrame {
         chSplit = new javax.swing.JCheckBox();
         paParsing = new javax.swing.JPanel();
         chWebAvatars = new javax.swing.JCheckBox();
+        chWebLoads = new javax.swing.JCheckBox();
+        chWebAttaches = new javax.swing.JCheckBox();
         chImage = new javax.swing.JCheckBox();
         chSmile = new javax.swing.JCheckBox();
         chLinks = new javax.swing.JCheckBox();
@@ -50,6 +52,7 @@ public class FConverter extends javax.swing.JFrame {
         laPost = new javax.swing.JLabel();
         spPost = new javax.swing.JSpinner();
         chFix = new javax.swing.JCheckBox();
+        chGroups = new javax.swing.JCheckBox();
         buStart = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -146,26 +149,44 @@ public class FConverter extends javax.swing.JFrame {
         chParseUsers.setSelected(true);
         chParseUsers.setText("Пользователи");
         chParseUsers.setEnabled(false);
+        chParseUsers.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParseUsers.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParseUsers.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chParseForum.setSelected(true);
         chParseForum.setText("Форум");
         chParseForum.setEnabled(false);
+        chParseForum.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParseForum.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParseForum.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chParseLoads.setSelected(true);
         chParseLoads.setText("Каталог файлов");
         chParseLoads.setEnabled(false);
+        chParseLoads.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParseLoads.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParseLoads.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chParsePubl.setSelected(true);
         chParsePubl.setText("Статьи");
         chParsePubl.setEnabled(false);
+        chParsePubl.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParsePubl.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParsePubl.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chParseNews.setSelected(true);
         chParseNews.setText("Новости, блоги и FAQ");
         chParseNews.setEnabled(false);
+        chParseNews.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParseNews.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParseNews.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chParseComments.setSelected(true);
         chParseComments.setText("Комментарии");
         chParseComments.setEnabled(false);
+        chParseComments.setMaximumSize(new java.awt.Dimension(140, 23));
+        chParseComments.setMinimumSize(new java.awt.Dimension(140, 23));
+        chParseComments.setPreferredSize(new java.awt.Dimension(140, 23));
 
         chEmpty.setSelected(true);
         chEmpty.setText("Очищать таблицы");
@@ -183,36 +204,41 @@ public class FConverter extends javax.swing.JFrame {
                     .addGroup(paSqlLayout.createSequentialGroup()
                         .addGap(21, 21, 21)
                         .addGroup(paSqlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(chParseForum)
-                            .addComponent(chParseUsers)
-                            .addComponent(chParseLoads)
-                            .addComponent(chParsePubl)
-                            .addComponent(chParseNews)
-                            .addComponent(chParseComments)))
+                            .addGroup(paSqlLayout.createSequentialGroup()
+                                .addComponent(chParseUsers, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chParseForum, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chParseLoads, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(paSqlLayout.createSequentialGroup()
+                                .addComponent(chParsePubl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chParseNews, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chParseComments, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addComponent(chEmpty)
                     .addComponent(chSplit))
-                .addContainerGap(269, Short.MAX_VALUE))
+                .addContainerGap(67, Short.MAX_VALUE))
         );
         paSqlLayout.setVerticalGroup(
             paSqlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(paSqlLayout.createSequentialGroup()
                 .addComponent(chParseAll)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParseUsers)
+                .addGroup(paSqlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(chParseUsers, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(chParseForum, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(chParseLoads, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParseForum)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParseLoads)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParsePubl)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParseNews)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chParseComments)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(paSqlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(chParsePubl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(chParseNews, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(chParseComments, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(chEmpty)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(chSplit))
+                .addComponent(chSplit)
+                .addContainerGap())
         );
 
         paParsing.setBorder(javax.swing.BorderFactory.createTitledBorder("Парсинг"));
@@ -243,6 +269,13 @@ public class FConverter extends javax.swing.JFrame {
         chFix.setSelected(true);
         chFix.setText("Разбор ошибочных тегов HTML");
 
+        chWebLoads.setText("Загрузка отсутствующих файлов для файлового архива из Internet");
+
+        chWebAttaches.setText("Загрузка отсутствующих вложенных файлов из Internet");
+
+        chGroups.setSelected(true);
+        chGroups.setText("Преобразование групп пользователей");
+
         javax.swing.GroupLayout paParsingLayout = new javax.swing.GroupLayout(paParsing);
         paParsing.setLayout(paParsingLayout);
         paParsingLayout.setHorizontalGroup(
@@ -261,11 +294,17 @@ public class FConverter extends javax.swing.JFrame {
                             .addComponent(tfSiteOld, javax.swing.GroupLayout.DEFAULT_SIZE, 272, Short.MAX_VALUE)
                             .addComponent(tfSiteNew, javax.swing.GroupLayout.DEFAULT_SIZE, 272, Short.MAX_VALUE)
                             .addComponent(spPost, javax.swing.GroupLayout.DEFAULT_SIZE, 272, Short.MAX_VALUE)))
-                    .addComponent(chWebAvatars)
-                    .addComponent(chImage)
-                    .addComponent(chSmile)
-                    .addComponent(chFix)
-                    .addComponent(chLinks))
+                    .addGroup(paParsingLayout.createSequentialGroup()
+                        .addGroup(paParsingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(chWebAvatars)
+                            .addComponent(chImage)
+                            .addComponent(chSmile)
+                            .addComponent(chFix)
+                            .addComponent(chLinks)
+                            .addComponent(chWebLoads)
+                            .addComponent(chWebAttaches)
+                            .addComponent(chGroups))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         paParsingLayout.setVerticalGroup(
@@ -273,11 +312,17 @@ public class FConverter extends javax.swing.JFrame {
             .addGroup(paParsingLayout.createSequentialGroup()
                 .addComponent(chWebAvatars)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(chWebLoads)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(chWebAttaches)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(chImage)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(chSmile)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(chFix)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(chGroups)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(chLinks)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -475,6 +520,14 @@ public class FConverter extends javax.swing.JFrame {
         chWebAvatars.setSelected(useWebAvatars);
     }
 
+    public void setWebLoads (boolean useWebLoads) {
+        chWebLoads.setSelected(useWebLoads);
+    }
+
+    public void setWebAttaches (boolean useWebAttaches) {
+        chWebAttaches.setSelected(useWebAttaches);
+    }
+
     public void setNoImage (boolean noImage) {
         chImage.setSelected(!noImage);
     }
@@ -485,6 +538,10 @@ public class FConverter extends javax.swing.JFrame {
 
     public void setNoFix (boolean noFix) {
         chFix.setSelected(!noFix);
+    }
+
+    public void setNoGroups (boolean noGroups) {
+        chGroups.setSelected(!noGroups);
     }
 
     public void setVersion (int version) {
@@ -576,6 +633,14 @@ public class FConverter extends javax.swing.JFrame {
         return chWebAvatars.isSelected();
     }
 
+    public boolean getWebLoads () {
+        return chWebLoads.isSelected();
+    }
+
+    public boolean getWebAttaches () {
+        return chWebAttaches.isSelected();
+    }
+
     public boolean getImage () {
         return chImage.isSelected();
     }
@@ -585,6 +650,10 @@ public class FConverter extends javax.swing.JFrame {
 
     public boolean getFix () {
         return chFix.isSelected();
+    }
+
+    public boolean getGroups () {
+        return chGroups.isSelected();
     }
 
     public int getVersion () {
@@ -597,6 +666,7 @@ public class FConverter extends javax.swing.JFrame {
     private javax.swing.JComboBox cbVersion;
     private javax.swing.JCheckBox chEmpty;
     private javax.swing.JCheckBox chFix;
+    private javax.swing.JCheckBox chGroups;
     private javax.swing.JCheckBox chImage;
     private javax.swing.JCheckBox chLinks;
     private javax.swing.JCheckBox chParseAll;
@@ -609,7 +679,9 @@ public class FConverter extends javax.swing.JFrame {
     private javax.swing.JCheckBox chPassword;
     private javax.swing.JCheckBox chSmile;
     private javax.swing.JCheckBox chSplit;
+    private javax.swing.JCheckBox chWebAttaches;
     private javax.swing.JCheckBox chWebAvatars;
+    private javax.swing.JCheckBox chWebLoads;
     private javax.swing.JLabel laPath;
     private javax.swing.JLabel laPost;
     private javax.swing.JLabel laPref;

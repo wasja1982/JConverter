@@ -47,10 +47,13 @@ public class TConverter extends Thread {
         conv.setLog(log);
         conv.setPassword(form.getPassword());
         conv.setWebAvatars(form.getWebAvatars());
+        conv.setWebLoads(form.getWebLoads());
+        conv.setWebAttaches(form.getWebAttaches());
         conv.setNoEmpty(!form.getEmpty());
         conv.setNoImage(!form.getImage());
         conv.setSmile(form.getSmile());
         conv.setNoFix(!form.getFix());
+        conv.setNoGroups(!form.getGroups());
         conv.setVersion(form.getVersion());
         conv.setSiteName(form.getSiteNameOld(), form.getSiteNameNew(), form.getPostOnForum());
 
