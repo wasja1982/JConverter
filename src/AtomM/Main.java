@@ -9,6 +9,24 @@ public class Main {
 
     static int CURRENT_VERSION = 11;
 
+    private static void createFile(String filename, ArrayList data) {
+        try {
+            OutputStreamWriter buf = new OutputStreamWriter(new FileOutputStream(filename), "UTF-8");
+            for (int i = 0; i < data.size(); i++) {
+                Object item = data.get(i);
+                if (item == null) {
+                    continue;
+                }
+                String str = item instanceof String ? (String) item : item.toString();
+                buf.write(str + "\r\n");
+            }
+            buf.flush();
+            buf.close();
+        } catch (Exception e) {
+            System.out.println("File \"" + filename + "\" not saved (" + e.getMessage() + ").");
+        }
+    }
+
     public static void main(String[] args) {
         String path = ".";
         String pref = "";
@@ -20,10 +38,13 @@ public class Main {
         boolean[] parse = new boolean[]{false, false, false, false, false, false};
         boolean sqlSplit = false;
         boolean useWebAvatars = false;
+        boolean useWebLoads = false;
+        boolean useWebAttaches = false;
         boolean noEmpty = false;
         boolean noImage = false;
         boolean parseSmile = false;
         boolean noFix = false;
+        boolean noGroups = false;
         int version = CURRENT_VERSION;
 
         for (int i = 0; i < args.length; i++) {
@@ -60,6 +81,10 @@ public class Main {
                 sqlSplit = true;
             } else if (args[i].equalsIgnoreCase("-wa")) {
                 useWebAvatars = true;
+            } else if (args[i].equalsIgnoreCase("-wl")) {
+                useWebLoads = true;
+            } else if (args[i].equalsIgnoreCase("-wt")) {
+                useWebAttaches = true;
             } else if (args[i].equalsIgnoreCase("-noempty")) {
                 noEmpty = true;
             } else if (args[i].equalsIgnoreCase("-noimage")) {
@@ -68,6 +93,8 @@ public class Main {
                 parseSmile = true;
             } else if (args[i].equalsIgnoreCase("-nofix")) {
                 noFix = true;
+            } else if (args[i].equalsIgnoreCase("-nogroups")) {
+                noGroups = true;
             } else if (args[i].equalsIgnoreCase("-so")) {
                 site_old = (i + 1 < args.length) ? args[i + 1] : null;
             } else if (args[i].equalsIgnoreCase("-sn")) {
@@ -85,18 +112,25 @@ public class Main {
             }
         }
 
+        if (site_new != null && !site_new.toLowerCase().startsWith("http://") && !site_new.toLowerCase().startsWith("https://")) {
+            site_new = "http://" + site_new;
+        }
+        
+        String[] uFiles = new String[]{"users", "forum", "loads", "stat", "news", "comments"};
+
         FConverter conv = new FConverter();
         conv.setPath(path);
         conv.setPref(pref);
         conv.setPassword(password);
         conv.setWebAvatars(useWebAvatars);
+        conv.setWebLoads(useWebLoads);
+        conv.setWebAttaches(useWebAttaches);
         conv.setNoEmpty(noEmpty);
         conv.setNoImage(noImage);
         conv.setSmile(parseSmile);
         conv.setSiteName(site_old, site_new, postOnForum);
-        conv.setParse(parseAll, parse);
-        conv.setSplit(sqlSplit);
         conv.setNoFix(noFix);
+        conv.setNoGroups(noGroups);
         conv.setVersion(version);
         conv.setVisible(true);
     }

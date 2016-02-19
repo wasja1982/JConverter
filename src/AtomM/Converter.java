@@ -12,7 +12,9 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URL;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -20,7 +22,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 import java.util.TreeMap;
@@ -57,13 +58,17 @@ public class Converter {
 
     private String PASSWORD = null;
     private boolean USE_WEB_AVATARS = false;
+    private boolean USE_WEB_LOADS = false;
+    private boolean USE_WEB_ATTACHES = false;
     private boolean NO_EMPTY = false;
     private boolean NO_IMAGE = false;
     private boolean PARSE_SMILE = false;
     private boolean NO_FIX = false;
+    private boolean NO_GROUPS = false;
     private String SITE_NAME_OLD = null;
     private String SITE_NAME_NEW = null;
     private Integer POST_ON_FORUM = null;
+    private int MAX_WEB_SIZE = 1 << 24; // 16 Mb
 
     private int VERSION = 0;
 
@@ -71,19 +76,9 @@ public class Converter {
     
     private DLog log = null;
 
-    private TreeMap uUsers = null;
-    private TreeMap uUsersMeta = null;
-    private TreeMap uThemes = null;
-    private ArrayList uForumAttachDir = null;
-    private ArrayList uNewsAttachDir = null;
-    private ArrayList uBlogAttachDir = null;
-    private ArrayList uFaqAttachDir = null;
-    private ArrayList uStatAttachDir = null;
-
-    private ArrayList uLoadsCat = null;
-    private ArrayList uForumCat = null;
-    private ArrayList uForumPost = null;
-    private TreeMap uForumThread = null;
+    private TreeMap<String, String> uUsers = null;
+    private TreeMap<String, String[]> uUsersMeta = null;
+    private TreeMap<String, String[]> uThemesMeta = null;
 
     private ArrayList[][] uData = {{null},
     {null, null, null},
@@ -105,18 +100,26 @@ public class Converter {
     {"news", "news_sections"},
     {"loads_comments", "stat_comments", "news_comments"}};
 
-    private TreeMap uLinks = null;
+    private TreeMap<String, String> uLinks = null;
 
     public void setLog(DLog log) {
         this.log = log;
     }
 
-    public void setPassword(String PASSWORD) {
+        public void setPassword(String PASSWORD) {
         this.PASSWORD = PASSWORD;
     }
 
     public void setWebAvatars(boolean USE_WEB_AVATARS) {
         this.USE_WEB_AVATARS = USE_WEB_AVATARS;
+    }
+
+    public void setWebLoads(boolean USE_WEB_LOADS) {
+        this.USE_WEB_LOADS = USE_WEB_LOADS;
+    }
+
+    public void setWebAttaches(boolean USE_WEB_ATTACHES) {
+        this.USE_WEB_ATTACHES = USE_WEB_ATTACHES;
     }
 
     public void setNoEmpty(boolean NO_EMPTY) {
@@ -135,6 +138,10 @@ public class Converter {
         this.NO_FIX = NO_FIX;
     }
 
+    public void setNoGroups(boolean NO_GROUPS) {
+        this.NO_GROUPS = NO_GROUPS;
+    }
+    
     public void setSiteName(String SITE_NAME_OLD, String SITE_NAME_NEW, Integer POST_ON_FORUM) {
         this.SITE_NAME_OLD = SITE_NAME_OLD;
         this.SITE_NAME_NEW = SITE_NAME_NEW;
@@ -191,14 +198,13 @@ public class Converter {
      */
     private String getMD5(String str) {
         MessageDigest md5;
-        StringBuffer hexString = new StringBuffer();
+        StringBuilder hexString = new StringBuilder();
         try {
             md5 = MessageDigest.getInstance("md5");
             md5.reset();
             md5.update(str.getBytes());
-            byte messageDigest[] = md5.digest();
-            for (int i = 0; i < messageDigest.length; i++) {
-                hexString.append(Integer.toHexString(0xFF & messageDigest[i]));
+            for (byte digest : md5.digest()) {
+                hexString.append(Integer.toHexString(0xFF & digest));
             }
         } catch (NoSuchAlgorithmException e) {
             return e.toString();
@@ -227,8 +233,12 @@ public class Converter {
      * @return дата.
      */
     private Date parseDate(String date) {
-        Date parse = (date != null && !date.isEmpty() && !date.equals("0")) ? new Date(Long.parseLong(date) * 1000) : new Date();
-        return parse;
+        try {
+            Date parse = (date != null && !date.isEmpty() && !date.equals("0")) ? new Date(Long.parseLong(date) * 1000) : new Date();
+            return parse;
+        } catch (Exception e) {
+            return new Date();
+        }
     }
 
     /**
@@ -241,11 +251,7 @@ public class Converter {
     private String parseDateToString(String date) {
         String parse = "0000-00-00 00:00:00";
         if (date != null && !date.isEmpty() && !date.equals("0")) {
-            try {
-                parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parseDate(date));
-            } catch (Exception e) {
-                parse = "0000-00-00 00:00:00";
-            }
+            parse = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parseDate(date));
         }
         return parse;
     }
@@ -321,6 +327,78 @@ public class Converter {
     }
 
     /**
+     * Загрузка файла.
+     *
+     * @param url путь к исходному файлу;
+     * @param new_filename путь к результирующему файлу.
+     * @return <tt>true</tt> если файл скопирован, иначе <tt>false</tt>.
+     */
+    private long loadFile(String url, String new_filename) {
+        if (url != null) {
+            try {
+                File new_file = new File(new_filename);
+                ReadableByteChannel ic = Channels.newChannel(new URL(url.replace(DS, "/")).openStream());
+                FileChannel oc = new FileOutputStream(new_file).getChannel();
+                long total = oc.transferFrom(ic, 0, MAX_WEB_SIZE);
+                ic.close();
+                oc.close();
+                return total;
+            } catch (Exception e) {
+                return -1;
+            }
+        } else {
+            return -1;
+        }
+    }
+
+    /**
+     * Загрузка файла.
+     *
+     * @param urls массив путей к исходному файлу;
+     * @param new_filename путь к результирующему файлу.
+     * @return <tt>true</tt> если файл скопирован, иначе <tt>false</tt>.
+     */
+    private long loadFile(String[] urls, String new_filename) {
+        if (urls != null && urls.length > 0) {
+            for (String url : urls) {
+                long total;
+                if ((total = loadFile(url, new_filename)) >= 0) {
+                    return total;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Проверка на существование каталога и его создание при отсуствии.
+     *
+     * @param path путь к каталогу;
+     * @param error текст ошибки.
+     * @return <tt>true</tt> если каталог создан или существует, иначе <tt>false</tt>.
+     */
+    private boolean createDir(String path, String error, boolean needAccessFile) {
+        try {
+            File dir = new File(path);
+            if (dir.exists()) {
+                if (!dir.isDirectory()) {
+                    println("WARNING: Path \"" + path + "\" is not directory. " + error);
+                    return false;
+                }
+            } else {
+                dir.mkdirs();
+            }
+            if (needAccessFile) {
+                createAccessFile(path);
+            }
+        } catch (Exception e) {
+            println("WARNING: Path \"" + path + "\" can't created. " + error);
+            return false;
+        }
+        return true;
+    } 
+    
+    /**
      * Создание файла ".htaccess" (с разрешением качать всем) в заданном
      * каталоге.
      *
@@ -343,6 +421,154 @@ public class Converter {
         }
     }
 
+    /**
+     * Возврат массива старых доменов сайта.
+     *
+     * @return массив со списком доменов.
+     */
+    private String[] getOldSites() {
+        String[] sites = {};
+        if (SITE_NAME_OLD != null) {
+            String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+            ArrayList<String> keys = new ArrayList<String>();
+            for (String site : old_sites) {
+                keys.add("http://" + site);
+                keys.add("http://www." + site);
+            }
+            sites = keys.size() > 0 ? keys.toArray(old_sites) : sites;
+        }
+        return sites;
+    }
+    
+    /**
+     * Возврат массива старых ссылок.
+     *
+     * @return массив со списком ссылок.
+     */
+    private String[] getOldLinks(String url) {
+        String[] urls = getOldSites();
+        for (int i = 0; i < urls.length; i++) {
+            urls[i] += url;
+        }
+        return urls;
+    }
+    
+    /**
+     * Модификация ссылок.
+     *
+     * @param old_path старый путь (относительный или полный);
+     * @param new_path новый путь (если null, то ссылка удаляется из списка).
+     * @return <tt>true</tt> если файл создан, иначе <tt>false</tt>.
+     */
+    private void updateLink(String old_path, String new_path) {
+        if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
+            String new_url = (new_path != null && !new_path.isEmpty()) ? new_path.replace(DS, "/") : "";
+            new_url = SITE_NAME_NEW.toLowerCase() + (new_url.isEmpty() || new_url.startsWith("/") ? "" : "/") + new_url;
+            if (old_path.toLowerCase().startsWith("http://") || old_path.toLowerCase().startsWith("https://")) {
+                if (new_path == null) {
+                    uLinks.put(old_path, null);
+                } else {
+                    uLinks.put(old_path, new_url);
+                }
+            } else {
+                String old_url = (!old_path.isEmpty()) ? old_path.replace(DS, "/") : "";
+                old_url = (old_url.isEmpty() || old_url.startsWith("/") ? "" : "/") + old_url;
+                for (String site : getOldSites()) {
+                    if (new_path == null) {
+                        if (old_url.endsWith("/")) {
+                            uLinks.put(site + old_url.substring(0, old_url.length()-1), null);
+                        } else {
+                            uLinks.put(site + old_url + "/", null);
+                        }
+                        uLinks.put(site + old_url, null);
+                    } else {
+                        if (old_url.endsWith("/")) {
+                            uLinks.put(site + old_url.substring(0, old_url.length()-1), new_url);
+                        } else {
+                            uLinks.put(site + old_url + "/", new_url);
+                        }
+                        uLinks.put(site + old_url, new_url);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Нахождение относительного пути по ссылке.
+     *
+     * @param url анализируемый URL.
+     * @return <tt>null</tt> если домен не совпадает, иначе относительный путь.
+     */
+    private String trimUrl(String url) {
+        String path = null;
+        if (SITE_NAME_OLD != null) {
+            String[] old_sites = SITE_NAME_OLD.toLowerCase().split(";");
+            ArrayList<String> keys = new ArrayList<String>();
+            for (String site : old_sites) {
+                keys.add("http://" + site);
+                keys.add("http://www." + site);
+            }
+            for (String key : keys.toArray(old_sites)) {
+                if (url.toLowerCase().startsWith(key)) {
+                    path = url.substring(key.length());
+                    path = path.startsWith("/") ? path.substring(1) : path;
+                }
+            }
+        }
+        return path;
+    }
+    
+    /**
+     * Возврат мета-данных, привязанных к ID записей.
+     *
+     * @param table имя таблицы, для которой необходимы мета-данные.
+     * @return мета-данные.
+     */
+    private TreeMap<String, String[]> getMeta(String table) {
+        TreeMap<String, String[]> uMeta = new TreeMap<String, String[]>();
+        int x = -1;
+        int y = -1;
+        boolean found = false;
+        for (int i = 0; i < uTables.length; i++) {
+            if (found) break;
+            for (int j = 0; j < uTables[i].length; j++) {
+                if (table.equalsIgnoreCase(uTables[i][j])) {
+                    x = i;
+                    y = j;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (x >= 0 && y >= 0 && uData[x][y] != null && !uData[x][y].isEmpty()) {
+            for (int k = 0; k < uData[x][y].size(); k++) {
+                String[] uRecord = (String[])uData[x][y].get(k);
+                if (uRecord.length > 0 && !uRecord[0].isEmpty()) {
+                    uMeta.put(uRecord[0], uRecord);
+                }
+            }
+        }
+        return uMeta;
+    }
+    
+    
+    /**
+     * Перевод строки в число.
+     *
+     * @param str строка, содержащая число;
+     * @param def значение по умолчанию, присваемое при невозможности перевода.
+     * @return преобразованное число.
+     */
+    private int parseInt(String str, int def) {
+        int result = def;
+        try {
+            result = str != null ? Integer.parseInt(str) : def;
+        } catch (Exception e) {
+            result = def;
+        }
+        return result;
+    }
     /**
      * Экранирование спецсимволов в строке.
      *
@@ -727,6 +953,363 @@ public class Converter {
     }
 
     /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок форума.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_forum_stage1(String url_id, TreeMap<String, String[]> uForumsMeta, TreeMap<String, Object[]> uPosts) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index[0].equals("0")) {
+                value = "/forum/";
+                if (index.length >= 4) {
+                    if (index[3].equals("34")) {// http://site.ucoz.ru/forum/0-0-1-34 Ленточный форум
+                        boolean page = !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1");
+                        value = "/forum/last_posts/" + (page ? "?page=" + index[2] : "");
+                        if (index.length >= 5 && !index[4].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[4].equals("1")) value += "title&asc=1";
+                            else if (index[4].equals("2")) value += "title";
+                            else if (index[4].equals("3")) value += "posts&asc=1";
+                            else if (index[4].equals("4")) value += "posts";
+                            else if (index[4].equals("5")) value += "views&asc=1";
+                            else if (index[4].equals("6")) value += "views";
+                            else if (index[4].equals("7")) value += ""; // TODO: Автор темы
+                            else if (index[4].equals("8")) value += ""; // TODO: Автор темы
+                            else if (index[4].equals("9")) value += "last_post&asc=1";
+                            else if (index[4].equals("10")) value += "last_post";
+                        }
+                    } else if (index[3].equals("35")) { // http://site.ucoz.ru/forum/0-0-1-35 Пользователи форума
+                        value = "/users/index/";
+                    } else if (index[3].equals("36")) { // http://site.ucoz.ru/forum/0-0-0-36 Правила форума
+                        value = "/forum/"; // TODO: Правила форума 
+                   } else if (index[3].equals("37")) { // http://site.ucoz.ru/forum/0-0-0-37 RSS для форума
+                        value = "/forum/rss/";
+                    } else if (index[3].equals("6")) {// http://site.ucoz.ru/forum/0-0-0-6 Поиск для форума
+                        value = "/search/";
+                    } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) { // http://site.ucoz.ru/forum/0-0-1-3-1 Сообщения пользователя
+                        value = "/forum/user_posts/" + index[4] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");
+                    } else {
+                        value = "/forum/";
+                    }
+                } else {
+                    value = "/forum/";
+                }
+            } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) { // http://site.ucoz.ru/forum/1 Категория форума или форум
+                value = "/forum/";
+                if (uForumsMeta != null && uForumsMeta.containsKey(index[0])) {
+                    String[] uRecord = uForumsMeta.get(index[0]);
+                    if (uRecord.length >= 2 && (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0"))) {
+                        value = "/forum" + (VERSION < 9 ? "/index/" + index[0] : "");
+                    } else {
+                        value = "/forum/view_forum/" + index[0];
+                    }
+                }
+            } else if ((index.length == 2 || (index.length > 2 && index[2].isEmpty())) // http://site.ucoz.ru/forum/1-1 Тема форума
+                    || (index.length == 3 || (index.length > 3 && index[3].isEmpty()))) { // http://site.ucoz.ru/forum/1-1-1 Тема форума с номером страницы
+                if (index[1].equals("0")) {
+                    value = "/forum/view_forum/" + index[0];
+                } else {
+                    value = "/forum/view_theme/" + index[1] + (index.length > 2 && !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
+                }
+            } else if (index.length >= 4) {
+                value = "/forum/";
+                if (index[2].isEmpty() || index[2].equals("0")) {
+                    if (!index[3].isEmpty() && index[3].equals("17")) { // http://site.ucoz.ru/forum/1-1-0-17-1 Последнее сообщение темы
+                        value = "/forum/view_theme/" + index[1];
+                        if (VERSION >= 10) { // AtomM 4 и новее
+                            if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                                String theme_id = index.length > 1 ? index[1] : null;
+                                if (uThemesMeta != null && uThemesMeta.containsKey(theme_id)) {
+                                    String[] uTheme = uThemesMeta.get(theme_id);
+                                    int countPost = uTheme.length > 6 ? parseInt(uTheme[6], 1) : 1;
+                                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                                    value += "?page=" + page + "#post" + countPost;
+                                }
+                            }
+                        } else { // Старше AtomM 4
+                            value += "?page=999";
+                        }
+                    } else if (index[1].equals("0")) {
+                        value = "/forum/view_forum/" + index[0];
+                    } else {
+                        value = "/forum/view_theme/" + index[1] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
+                    }
+                } else if (index[3].equals("16")) { // http://site.ucoz.ru/forum/1-1-1-16-1350000000 Обработка ссылок на посты форума
+                    if (VERSION >= 6) {
+                        value = "/forum/view_post/" + index[2];
+                    } else if (POST_ON_FORUM != null && POST_ON_FORUM > 0) {
+                        if (uPosts != null && uPosts.containsKey(index[2])) {
+                            Object[] entry = uPosts.get(index[2]);
+                            if (entry != null && entry.length > 1) {
+                                String theme_id = (String)entry[1];
+                                if (theme_id == null || theme_id.isEmpty()) theme_id = index.length > 1 ? index[1] : null;
+                                if (theme_id != null && !theme_id.isEmpty()) {
+                                    int countPost = (Integer)entry[0];
+                                    int page = ((countPost - 1) / POST_ON_FORUM) + 1;
+                                    value = "/forum/view_theme/" + theme_id + "?page=" + page + "#post" + countPost;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                value = "/forum/";
+            }
+        } else {
+            value = "/forum/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок файлового архива.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_load_stage1(String url_id, TreeMap<String, String[]> uLoadsMeta) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/load/1-1 Категория
+                value = "/loads/";
+                if (index[0].equals("0")) {
+                    value = "/loads/" + (index.length > 1 ? "?page=" + index[1] : "");
+                } else {
+                    if (uLoadsMeta != null && uLoadsMeta.containsKey(index[0])) {
+                        String[] uRecord = uLoadsMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/loads/" + class_sections + "/" + index[0] + (index.length > 1 ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/loads/";
+                        }
+                    }
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/load/1-1-0-1 Материал
+                value = "/loads/view/" + index[3];
+            } else if (index.length == 5) {
+                value = "/loads/";
+                if (index[4] != null && !index[4].isEmpty()) {
+                    if (index[4].equals("1")) { // http://site.ucoz.ru/load/0-0-0-0-1 Добавление материала
+                        value = "/loads/add_form/";
+                    } else if (index[4].equals("16")) { // Неактивные материалы и ТОП-ы
+                        boolean page = !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                        value = "/loads/" + (page ? "?page=" + index[1] : "");
+                        if (!index[2].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[2].equals("0")) value += "date"; // TODO: http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
+                            else if (index[2].equals("1")) value += "date"; // http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
+                            else if (index[2].equals("2")) value += "date"; // TODO: http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
+                            else if (index[2].equals("3")) value += "downloads"; // http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
+                            else if (index[2].equals("4")) value += "views"; // http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
+                            else if (index[2].equals("5")) value += "comments"; // http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
+                        }
+                        
+                    } else if (index[4].equals("17")) { // http://site.ucoz.ru/load/0-0-1-0-17 Материалы пользователя
+                        value = "/loads/" + (!index[2].isEmpty() && !index[2].equals("0") ? "user/" + index[2] : "")
+                                + (!index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1") ? "?page=" + index[1] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-13 Редактирование материала
+                        value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "edit_form/" + index[3] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-20 Ссылка для скачивания материала
+                        value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "download_file/" + index[3] : "");
+                    } else {
+                        value = "/loads/";
+                    }
+                }
+            } else {
+                value = "/loads/";
+            }
+        } else {
+            value = "/loads/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок публикаций.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_publ_stage1(String url_id, TreeMap<String, String[]> uStatsMeta) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/publ/1-1 Категория
+                value = "/stat/";
+                if (index[0].equals("0")) {
+                    value = "/stat/" + (index.length > 1 ? "?page=" + index[1] : "");
+                } else {
+                    if (uStatsMeta != null && uStatsMeta.containsKey(index[0])) {
+                        String[] uRecord = uStatsMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/stat/" + class_sections + "/" + index[0] + (index.length > 1 ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/stat/";
+                        }
+                    }
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/publ/1-1-0-1 Материал
+                value = "/stat/view/" + index[3];
+            } else if (index.length == 5) {
+                value = "/stat/";
+                if (index[4] != null && !index[4].isEmpty()) {
+                    if (index[4].equals("1")) { // http://site.ucoz.ru/publ/0-0-0-0-1 Добавление материала
+                        value = "/stat/add_form/";
+                    } else if (index[4].equals("16")) { // Неактивные материалы и ТОП-ы
+                        boolean page = !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                        value = "/stat/" + (page ? "?page=" + index[1] : "");
+                        if (!index[2].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[2].equals("0")) value += "date"; // TODO: http://site.ucoz.ru/publ/0-1-0-0-16 Неактивные материалы
+                            else if (index[2].equals("1")) value += "date"; // http://site.ucoz.ru/publ/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
+                            else if (index[2].equals("2")) value += "date"; // TODO: http://site.ucoz.ru/publ/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
+                            else if (index[2].equals("3")) value += "downloads"; // http://site.ucoz.ru/publ/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
+                            else if (index[2].equals("4")) value += "views"; // http://site.ucoz.ru/publ/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
+                            else if (index[2].equals("5")) value += "comments"; // http://site.ucoz.ru/publ/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
+                        }
+                        
+                    } else if (index[4].equals("17")) { // http://site.ucoz.ru/publ/0-0-1-0-17 Материалы пользователя
+                        value = "/stat/" + (!index[2].isEmpty() && !index[2].equals("0") ? "user/" + index[2] : "")
+                                + (!index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1") ? "?page=" + index[1] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/publ/0-0-0-1-13 Редактирование материала
+                        value = "/stat/" + (!index[3].isEmpty() && !index[3].equals("0") ? "edit_form/" + index[3] : "");
+                    } else {
+                        value = "/stat/";
+                    }
+                }
+            } else {
+                value = "/stat/";
+            }
+        } else {
+            value = "/stat/";
+        }
+        return value;
+     }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок новостей.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_news_stage1(String url_id, TreeMap<String, String[]> uNewsMeta, int mode) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) {
+                value = "/news/";
+                if (index.length == 1) { // http://site.ucoz.ru/news/2 2-я страница архива новостей
+                    boolean page = !index[0].isEmpty() && !index[0].equals("0") && !index[0].equals("1");
+                    value = "/news/" + (page ? "?page=" + index[0] : "");
+                } else if (index.length == 2 && index[1] != null) {
+                    if (index[1].equals("00")) { // TODO: http://site.ucoz.ru/news/2011-00 Календарь с сообщениями за 2011 год
+                    } else { // TODO: http://site.ucoz.ru/news/2011-02 Календарь с сообщениями за февраль 2011 года
+                    }
+                } else if (index.length == 3 && index[1] != null && index[2] != null) {
+                    if (index[1].equals("0")) { // http://site.ucoz.ru/news/2-0-1 2-я страница категории
+                        boolean page = !index[0].isEmpty() && !index[0].equals("0") && !index[0].equals("1");
+                        int id = (parseInt(index[2], 1) - 1) * 3 + mode;
+                        if (uNewsMeta != null && uNewsMeta.containsKey(index[0])) {
+                            String[] uRecord = uNewsMeta.get(index[0]);
+                            if (uRecord.length >= 3) {
+                                String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                                value = "/news/" + class_sections + "/" + id + (page ? "?page=" + index[0] : "");
+                            } else {
+                                value = "/news/";
+                            }
+                        }
+                    } else { // TODO: http://site.ucoz.ru/news/2011-02-06 Сообщения за 6 февраля 2011 года
+                    }
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/news/2011-02-06-1 Материал
+                value = "/news/view/" + index[3];
+            } else {
+                value = "/news/";
+            }
+        } else {
+            value = "/news/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок FAQ.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_faq_stage1(String url_id, TreeMap<String, String[]> uFaqMeta) {
+        int mode = 3;
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 3) {
+                boolean page = index.length > 1 && !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                if (index[0] == null || index[0].equals("0")) { // http://site.ucoz.ru/faq/0-2 2-я страница FAQ
+                    value = "/news/" + (page ? "?page=" + index[1] : "");
+                } else { // http://site.ucoz.ru/faq/1-2 2-я страница категории
+                    int id = (parseInt(index[0], 1) - 1) * 3 + mode;
+                    if (uFaqMeta != null && uFaqMeta.containsKey(index[0])) {
+                        String[] uRecord = uFaqMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/news/" + class_sections + "/" + id + (page ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/news/";
+                        }
+                    }
+                }
+            } else if (index.length >= 3 && index[2] != null && !index[2].isEmpty() && !index[2].equals("0")) { // http://site.ucoz.ru/faq/1-0-9 Материал
+                value = "/news/view/" + index[2];
+            } else {
+                value = "/news/";
+            }
+        } else {
+            value = "/news/";
+        }
+        return value;
+    }
+    
+    /**
+     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок пользователей.
+     *
+     * @param url_id ссылка.
+     */
+    private String parse_index_stage1(String url_id) {
+        String value = null;
+        if (url_id != null) {
+            String[] index = url_id.split("-");
+            if (index[0].equals("15")) {
+                // Пользователи сайта
+                value = "/users/index/";
+            } else if (index[0].equals("1")) {
+                // Страница входа
+                value = "/users/login_form/";
+            } else if (index[0].equals("3")) {
+                // Страница регистрации
+                value = "/users/add_form/";
+            } else if (index[0].equals("34")) {
+                // Комментарии пользователя index[1]
+            } else if (index[0].equals("8")) {
+                index = url_id.split("-", 3);
+                // Профиль пользователя с номером index[1] или именем index[2]
+                if (index.length == 2) {
+                    value = "/users/info/" + index[1];
+                } else if (index.length == 3 && index[1].equals("0")) {
+                    String user_id = (String) uUsers.get(index[2]);
+                    if (user_id != null) {
+                        value = "/users/info/" + user_id;
+                    }
+                }
+            }
+        } else {
+            value = "";
+        }
+        return value;
+    }
+    
+    /**
      * Обработка файла "forum.txt" (этап 3) - конвертация тем форума.
      *
      * @param uRecord массив строк, содержащий данные о теме.
@@ -735,20 +1318,8 @@ public class Converter {
         if (uRecord.length < 13) {
             return false;
         }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[10]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
-        String id_last_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[12]);
-            id_last_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_last_author = "0";
-        }
+        String id_author = (uUsers.get(uRecord[10]) != null && !(uUsers.get(uRecord[10])).isEmpty()) ? uUsers.get(uRecord[10]) : "0";
+        String id_last_author = (uUsers.get(uRecord[12]) != null && !(uUsers.get(uRecord[12])).isEmpty()) ? uUsers.get(uRecord[12]) : "0";
         InsertQuery query = new InsertQuery(PREF + "themes");
         query.addItem("id", uRecord[0]);
         query.addItem("id_forum", uRecord[1]);
@@ -763,9 +1334,6 @@ public class Converter {
         if (VERSION > 0) {
             query.addItem("description", addslashes(uRecord[9]));
         }
-        if (VERSION >= 10) { // AtomM 4 и новее
-            uThemes.put(uRecord[0], uRecord[1]);
-        }
         sqlData.add(query);
         return true;
     }
@@ -779,13 +1347,7 @@ public class Converter {
         if (uRecord.length < 11) {
             return false;
         }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[6]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
+        String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         String attach = "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             attach = (uRecord[10].split("`").length > 0) ? "1" : "0";
@@ -800,8 +1362,9 @@ public class Converter {
             query.addItem("edittime", parseDate(uRecord[9]));
         }
         query.addItem("attaches", attach);
-        if (VERSION >= 10 && uThemes != null && uThemes.containsKey(uRecord[1])) { // AtomM 4 и новее
-            query.addItem("id_forum", (String)uThemes.get(uRecord[1]));
+        if (VERSION >= 10 && uThemesMeta != null && uThemesMeta.containsKey(uRecord[1])) { // AtomM 4 и новее
+            String[] uTheme = uThemesMeta.get(uRecord[1]);
+            query.addItem("id_forum", uTheme.length > 1 ? uTheme[1] : "0");
         }
         sqlData.add(query);
         return true;
@@ -817,144 +1380,41 @@ public class Converter {
         if (uRecord.length < 11) {
             return false;
         }
-        String key = String.format("-%s-%s-16-", uRecord[1], uRecord[0]);
-        if (uForumThread != null) {
-            Integer countPost = 1;
-            if (uForumThread.containsKey(uRecord[1])) {
-                countPost = (Integer) uForumThread.get(uRecord[1]) + 1;
-            }
-            uForumThread.put(uRecord[1], countPost);
-
-            for (int i = uForumPost.size() - 1; i >= 0; i--) {
-                String url_id = (String) uForumPost.get(i);
-                if (url_id.contains(key)) {
-                    uForumPost.remove(url_id);
-                    if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && POST_ON_FORUM != null && POST_ON_FORUM > 0 && uLinks != null) {
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + url_id,
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + url_id};
-                        int page = ((countPost - 1) / POST_ON_FORUM) + 1;
-                        String value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + uRecord[1] + "?page=" + page + "#post" + countPost;
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        String id_author = "0";
-        try {
-            Object ob = uUsers.get(uRecord[6]);
-            id_author = ((ob != null) && !((String) ob).isEmpty()) ? (String) ob : "0";
-        } catch (Exception e) {
-            id_author = "0";
-        }
+        String path = FORUM_ATTACH_TABLES + ((Integer) (Integer.parseInt(uRecord[1]) / 100)).toString() + DS;
+        String id_author = (uUsers.get(uRecord[6]) != null && !(uUsers.get(uRecord[6])).isEmpty()) ? uUsers.get(uRecord[6]) : "0";
         if (uRecord[10] != null && !uRecord[10].isEmpty()) {
             String[] attaches = uRecord[10].split("`");
-            if (uForumAttachDir != null && uForumAttachDir.size() > 0) {
-                for (int i = 0; i < attaches.length; i++) {
-                    if (attaches[i].length() > 0) {
-                        int pos = attaches[i].lastIndexOf('.');
-                        String ext = (pos >= 0) ? attaches[i].substring(pos) : "";
-                        String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
-                                || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
-                        String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS;
-                        String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[2], ext);
-                        boolean exist = false;
-                        for (int j = 0; j < uForumAttachDir.size(); j++) {
-                            String filename = "";
-                            if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
-                                filename = ((String) uForumAttachDir.get(j)) + attaches[i].substring(1);
-                            } else {
-                                filename = ((String) uForumAttachDir.get(j)) + attaches[i];
-                            }
-                            if (copyFile(filename, new_path + new_filename)) {
-                                pos = filename.lastIndexOf(DS + "_fr" + DS);
-                                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                    if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
-                                        filename = ((String) uForumAttachDir.get(j)) + attaches[i];
-                                        if (filename.lastIndexOf(ext) >= 0) {
-                                            filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
-                                            pos = filename.lastIndexOf(DS + "_fr" + DS);
-                                            if (pos >= 0) {
-                                                site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                                if (uLinks.containsKey(site)) {
-                                                    uLinks.remove(site);
-                                                }
-                                                site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                                if (uLinks.containsKey(site)) {
-                                                    uLinks.remove(site);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                exist = true;
-                                break;
+            for (int i = 0; i < attaches.length; i++) {
+                if (attaches[i].length() > 0) {
+                    int pos = attaches[i].lastIndexOf('.');
+                    String ext = (pos >= 0) ? attaches[i].substring(pos) : "";
+                    String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
+                            || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
+                    String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS;
+                    String new_filename = attachesName(uRecord[0], Integer.toString(i + 1), uRecord[2], ext);
+                    String filename = path + ((is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) ? attaches[i].substring(1) : attaches[i]);
+                    if (filename.startsWith(DUMP) && (copyFile(filename, new_path + new_filename)
+                            || (USE_WEB_ATTACHES && (loadFile(getOldLinks(filename.substring(DUMP.length() - 1).replace(DS, "/")), new_path + new_filename) >= 0)))) {
+                        updateLink(filename.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
+                        if (is_image.equals("1") && attaches[i].substring(0, 1).equalsIgnoreCase("s")) {
+                            filename = path + attaches[i];
+                            if (filename.lastIndexOf(ext) >= 0) {
+                                filename = filename.substring(0, filename.lastIndexOf(ext)) + ".jpg";
+                                updateLink(filename.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
                             }
                         }
-                        if (exist) {
-                            InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
-                            query_add.addItem("post_id", uRecord[0]);
-                            query_add.addItem("theme_id", uRecord[1]);
-                            query_add.addItem("user_id", id_author);
-                            query_add.addItem("attach_number", i + 1);
-                            query_add.addItem("filename", new_filename);
-                            query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length());
-                            query_add.addItem("date", parseDate(uRecord[2]));
-                            query_add.addItem("is_image", is_image);
-                            sqlData.add(query_add);
-                        } else {
-                            println("WARNING: Attachment \"" + attaches[i] + "\" not found.");
-                        }
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Обработка файла "fr_fr.txt" (этап 2) - конвертация ссылок на разделы
-     * форума и форумы.
-     *
-     * @param uRecord массив строк, содержащий данные о разделах и форумах.
-     */
-    private boolean parse_fr_fr_stage2(List sqlData, String[] uRecord) {
-        if (uRecord.length < 2) {
-            return false;
-        }
-        if (uRecord[0] != null) {
-            for (int i = uForumCat.size() - 1; i >= 0; i--) {
-                if (uRecord[0].equals(uForumCat.get(i))) {
-                    uForumCat.remove(uRecord[0]);
-                    String value = null;
-                    if (SITE_NAME_NEW != null) {
-                        if (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0")) {
-                            value = SITE_NAME_NEW.toLowerCase() + "/forum/index/" + uRecord[0];
-                        } else {
-                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + uRecord[0];
-                        }
-                    }
-                    if (value != null && SITE_NAME_OLD != null && uLinks != null) {
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0],
-                            "http://" + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0] + "/",
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0],
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/forum/" + uRecord[0] + "/"};
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
+                        InsertQuery query_add = new InsertQuery(PREF + "forum_attaches");
+                        query_add.addItem("post_id", uRecord[0]);
+                        query_add.addItem("theme_id", uRecord[1]);
+                        query_add.addItem("user_id", id_author);
+                        query_add.addItem("attach_number", i + 1);
+                        query_add.addItem("filename", new_filename);
+                        query_add.addItem("size", new File((VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + "forum" + DS + new_filename).length());
+                        query_add.addItem("date", parseDate(uRecord[2]));
+                        query_add.addItem("is_image", is_image);
+                        sqlData.add(query_add);
+                    } else {
+                        println("WARNING: Attachment \"" + attaches[i] + "\" [forum post ID=\"" + uRecord[0] + "\"] not found.");
                     }
                 }
             }
@@ -981,24 +1441,9 @@ public class Converter {
             if (uRecord.length < 17) {
                 return false;
             }
-            String last_theme_id = "";
-            try {
-                last_theme_id = ((uRecord[16] != null) && !uRecord[16].isEmpty()) ? uRecord[16] : "";
-            } catch (Exception e) {
-                last_theme_id = "";
-            }
-            String themes = "0";
-            try {
-                themes = ((uRecord[9] != null) && !uRecord[9].isEmpty()) ? uRecord[9] : "0";
-            } catch (Exception e) {
-                themes = "0";
-            }
-            String posts = "0";
-            try {
-                posts = ((uRecord[10] != null) && !uRecord[10].isEmpty()) ? uRecord[10] : "0";
-            } catch (Exception e) {
-                posts = "0";
-            }
+            String last_theme_id = ((uRecord[16] != null) && !uRecord[16].isEmpty()) ? uRecord[16] : "";
+            String themes = ((uRecord[9] != null) && !uRecord[9].isEmpty()) ? uRecord[9] : "0";
+            String posts = ((uRecord[10] != null) && !uRecord[10].isEmpty()) ? uRecord[10] : "0";
             query.addItem("in_cat", uRecord[1]);
             query.addItem("last_theme_id", last_theme_id);
             query.addItem("themes", themes);
@@ -1006,49 +1451,6 @@ public class Converter {
             query.addItem("description", addslashes(uRecord[6]));
         }
         sqlData.add(query);
-        return true;
-    }
-
-    /**
-     * Обработка файла "ld_ld.txt" (этап 2) - конвертация ссылок на разделы и
-     * категории.
-     *
-     * @param uRecord массив строк, содержащий данные о разделах и категориях.
-     */
-    private boolean parse_ld_ld_stage2(List sqlData, String[] uRecord) {
-        if (uRecord.length < 7) {
-            return false;
-        }
-        String class_sections = "category";
-        if (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) {
-            class_sections = "category";
-        } else {
-            class_sections = "section";
-        }
-        if (uRecord[0] != null) {
-            for (int i = uLoadsCat.size() - 1; i >= 0; i--) {
-                String name = (String) uLoadsCat.get(i);
-                String[] index = name.split("-");
-                if (index.length > 0 && uRecord[0].equals(index[0])) {
-                    uLoadsCat.remove(i);
-                    if (SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                        String value = SITE_NAME_NEW.toLowerCase() + "/loads/" + class_sections + "/" + uRecord[0];
-                        if (index.length > 1) {
-                            value += "&page=" + index[1];
-                        }
-                        String[] keys = {"http://" + SITE_NAME_OLD.toLowerCase() + "/load/" + name,
-                            "http://" + SITE_NAME_OLD.toLowerCase() + "/load/" + name + "/",
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/load/" + name,
-                            "http://www." + SITE_NAME_OLD.toLowerCase() + "/load/" + name + "/"};
-                        for (int j = 0; j < keys.length; j++) {
-                            if (uLinks.containsKey(keys[j])) {
-                                uLinks.put(keys[j], value);
-                            }
-                        }
-                    }
-                }
-            }
-        }
         return true;
     }
 
@@ -1062,12 +1464,7 @@ public class Converter {
         if (uRecord.length < 7) {
             return false;
         }
-        String section_id = "0";
-        try {
-            section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
-        } catch (Exception e) {
-            section_id = "0";
-        }
+        String section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "loads_categories" : "loads_sections"));
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[5]));
@@ -1108,12 +1505,7 @@ public class Converter {
         if (uRecord.length < 5) {
             return false;
         }
-        int id = 3 + mode;
-        try {
-            id = (Integer.parseInt(uRecord[0]) + 1) * 3 + mode;
-        } catch (Exception e) {
-            id = 3 + mode;
-        }
+        int id = (parseInt(uRecord[0], 0) + 1) * 3 + mode;
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "news_categories" : "news_sections"));
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[3]));
@@ -1142,12 +1534,7 @@ public class Converter {
         if (uRecord.length < 6) {
             return false;
         }
-        String section_id = "0";
-        try {
-            section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
-        } catch (Exception e) {
-            section_id = "0";
-        }
+        String section_id = ((uRecord[1] != null) && !uRecord[1].isEmpty()) ? uRecord[1] : "0";
         InsertQuery query = new InsertQuery(PREF + (VERSION >= 10 ? "stat_categories" : "stat_sections"));
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[5]));
@@ -1195,14 +1582,7 @@ public class Converter {
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[6].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[26]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
-
+        String author_id = (uUsers.get(uRecord[26]) != null && !(uUsers.get(uRecord[26])).isEmpty()) ? uUsers.get(uRecord[26]) : "0";
         InsertQuery query = new InsertQuery(PREF + "loads");
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[15]));
@@ -1266,44 +1646,25 @@ public class Converter {
         if (uRecord[24] != null && !uRecord[24].isEmpty()) {
             download = loadsName(uRecord[24], uRecord[5]);
             String filename = String.format("%s_%s", uRecord[0], uRecord[24]);
-            String path = LOADS_TABLES + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS + filename;
-            if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                int pos = path.lastIndexOf(DS + "_ld" + DS);
-                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + path.substring(pos).replace(DS, "/");
-                    if (uLinks.containsKey(site)) {
-                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                    }
-                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + path.substring(pos).replace(DS, "/");
-                    if (uLinks.containsKey(site)) {
-                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                    }
-                }
+            String old_path = LOADS_TABLES + ((Integer) (parseInt(uRecord[0], 0) / 100)).toString() + DS + filename;
+            String new_path = "files" + DS + "loads" + DS + download;
+            if (old_path.startsWith(DUMP) && (copyFile(old_path, new_path)
+                    || (USE_WEB_LOADS && (loadFile(getOldLinks(old_path.substring(DUMP.length() - 1).replace(DS, "/")), new_path) >= 0)))) {
+                updateLink(old_path.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + new_path.replace(DS, "/"));
             } else {
                 println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
             }
-        } else if (uRecord[22] != null && !uRecord[22].isEmpty() && SITE_NAME_OLD != null) {
-            String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-            String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-            if (uRecord[22].toLowerCase().startsWith(site_0)
-                    || uRecord[22].toLowerCase().startsWith(site_1)) {
-                String filename = null;
+        } else if (uRecord[22] != null && !uRecord[22].isEmpty()) {
+            String filename = trimUrl(uRecord[22]);
+            if (filename != null) {
                 download = loadsName(uRecord[22], uRecord[5]);
-                if (uRecord[22].toLowerCase().startsWith(site_0)) {
-                    filename = uRecord[22].substring(site_0.length() + 1);
-                } else if (uRecord[22].toLowerCase().startsWith(site_1)) {
-                    filename = uRecord[22].substring(site_1.length() + 1);
-                }
-                if (filename != null) {
-                    String path = DUMP + filename.replace("/", DS);
-                    if (copyFile(path, "files" + DS + "loads" + DS + download)) {
-                        if (uLinks != null && uLinks.containsKey(uRecord[22])) {
-                            uLinks.put(uRecord[22], SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "files/loads/" + download);
-                        }
-                        output = "file://" + download;
-                    } else {
-                        println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
-                    }
+                String old_path = DUMP + filename.replace("/", DS);
+                String new_path = "files" + DS + "loads" + DS + download;
+                if (copyFile(old_path, new_path) || (USE_WEB_LOADS && loadFile(uRecord[22], new_path) >= 0)) {
+                    updateLink(filename, (VERSION >= 10 ? "/data/" : "/sys/") + new_path.replace(DS, "/"));
+                    output = "file://" + download; // TODO: Check return value
+                } else {
+                    println("WARNING: File \"" + filename + "\" [load ID=" + uRecord[0] + "] not found.");
                 }
             }
         }
@@ -1323,31 +1684,13 @@ public class Converter {
         if (uRecord.length < 17) {
             return false;
         }
-        int id = 0;
-        try {
-            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + mode;
-        } catch (Exception e) {
-            return false;
-        }
-        int category_id = 3 + mode;
-        try {
-            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + mode;
-        } catch (Exception e) {
-            category_id = 3 + mode;
-        }
-        if (category_id == 0) {
-            category_id = 1;
-        }
+        int id = (parseInt(uRecord[0], 1) - 1) * 3 + mode;
+        int category_id = (parseInt(uRecord[1], 0) + 1) * 3 + mode;
+        category_id = category_id <= 0 ? 1 : category_id;
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[5].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[6].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[10]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[10]) != null && !(uUsers.get(uRecord[10])).isEmpty()) ? uUsers.get(uRecord[10]) : "0";
         InsertQuery query = new InsertQuery(PREF + "news");
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[11]));
@@ -1382,26 +1725,10 @@ public class Converter {
         if (uRecord.length < 18) {
             return false;
         }
-        int id = 0;
-        try {
-            id = (Integer.parseInt(uRecord[0]) - 1) * 3 + 3;
-        } catch (Exception e) {
-            return false;
-        }
-        int category_id = 6;
-        try {
-            category_id = (Integer.parseInt(uRecord[1]) + 1) * 3 + 3;
-        } catch (Exception e) {
-            category_id = 6;
-        }
+        int id = (parseInt(uRecord[0], 1) - 1) * 3 + 3;
+        int category_id = (parseInt(uRecord[1], 0) + 1) * 3 + 3;
         String available = (uRecord[5].equals("0")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[13]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[13]) != null && !(uUsers.get(uRecord[13])).isEmpty()) ? uUsers.get(uRecord[13]) : "0";
         InsertQuery query = new InsertQuery(PREF + "news");
         query.addItem("id", id);
         query.addItem("title", addslashes(uRecord[10]));
@@ -1437,13 +1764,7 @@ public class Converter {
         String commented = (uRecord[7].equals("0")) ? "0" : "1";
         String available = (uRecord[6].equals("0")) ? "1" : "0";
         String on_home_top = (uRecord[4].equals("1")) ? "1" : "0";
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(uRecord[15]);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
+        String author_id = (uUsers.get(uRecord[15]) != null && !(uUsers.get(uRecord[15])).isEmpty()) ? uUsers.get(uRecord[15]) : "0";
         InsertQuery query = new InsertQuery(PREF + "stat");
         query.addItem("id", uRecord[0]);
         query.addItem("title", addslashes(uRecord[13]));
@@ -1497,142 +1818,58 @@ public class Converter {
      * @return ссылки на вложение или <tt>null</tt>, если вложений нет.
      */
     private String parse_news_stage2(List sqlData, String[] uRecord, int mode) {
-        if (mode > 3) {
+        if (mode > 3 || (mode == 0 && uRecord.length < 25) || (mode == 1 && uRecord.length < 16)
+                || (mode == 2 && uRecord.length < 16) || (mode == 3 && uRecord.length < 18)) {
             return null;
         }
-        String files = null;
-        String date = null;
-        String author_name = null;
-        ArrayList<String> attachDir = null;
-        String id = uRecord[0];
-        if (mode > 0) {
-            try {
-                id = Integer.toString((Integer.parseInt(uRecord[0]) - 1) * 3 + mode);
-            } catch (Exception e) {
-                return null;
-            }
-        }
-        String[] paths = {"_pu", "_nw", "_bl", "_fq"};
+        String id = mode > 0 ? Integer.toString((parseInt(uRecord[0], 1) - 1) * 3 + mode) : uRecord[0];
+        String files = mode == 0 ? uRecord[24] : (mode == 3 ? uRecord[17] : uRecord[15]);
+        String date = mode == 0 ? uRecord[5] : (mode == 3 ? uRecord[4] : uRecord[8]);
+        String author_name = mode == 0 ? uRecord[15] : (mode == 3 ? uRecord[13] : uRecord[10]);
+        String[] full_paths = {PUBL_ATTACH_TABLES, NEWS_ATTACH_TABLES, BLOG_ATTACH_TABLES, FAQ_ATTACH_TABLES};
+        String[] modules = {"publication", "news", "blog", "FAQ"};
         String[] new_paths = {"stat", "news", "news", "news"};
         String[] tables = {"stat_attaches", "news_attaches", "news_attaches", "news_attaches"};
-        switch (mode) {
-            case 0:
-                if (uRecord.length < 25) {
-                    return null;
-                }
-                files = uRecord[24];
-                date = uRecord[5];
-                author_name = uRecord[15];
-                attachDir = uStatAttachDir;
-                break;
-            case 1:
-                if (uRecord.length < 16) {
-                    return null;
-                }
-                files = uRecord[15];
-                date = uRecord[8];
-                author_name = uRecord[10];
-                attachDir = uNewsAttachDir;
-                break;
-            case 2:
-                if (uRecord.length < 16) {
-                    return null;
-                }
-                files = uRecord[15];
-                date = uRecord[8];
-                author_name = uRecord[10];
-                attachDir = uBlogAttachDir;
-                break;
-            case 3:
-                if (uRecord.length < 18) {
-                    return null;
-                }
-                files = uRecord[17];
-                date = uRecord[4];
-                author_name = uRecord[13];
-                attachDir = uFaqAttachDir;
-                break;
-            default:
-                return null;
-        }
-        String author_id = "0";
-        try {
-            Object obj = uUsers.get(author_name);
-            author_id = ((obj != null) && !((String) obj).isEmpty()) ? (String) obj : "0";
-        } catch (Exception e) {
-            author_id = "0";
-        }
-        // TODO: String path = DUMP + paths[mode] + DS + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS;
+        String author_id = (uUsers.get(author_name) != null && !(uUsers.get(author_name)).isEmpty()) ? uUsers.get(author_name) : "0";
+        String path = full_paths[mode] + ((Integer) (Integer.parseInt(uRecord[0]) / 100)).toString() + DS;
         String output = "";
         String[] attaches = files.split("\\|");
         if (attaches != null && attaches.length > 0) {
             for (int i = 0; i < attaches.length; i++) {
                 if (attaches[i] != null && !attaches[i].isEmpty()) {
                     String[] parts = attaches[i].split("`");
-                    if (attachDir != null && attachDir.size() > 0 && parts.length > 1) {
+                    if (parts.length > 1) {
                         String ext = (parts[1].isEmpty()) ? "" : "." + parts[1];
                         String is_image = (ext.equalsIgnoreCase(".png") || ext.equalsIgnoreCase(".jpg")
                                 || ext.equalsIgnoreCase(".gif") || ext.equalsIgnoreCase(".jpeg")) ? "1" : "0";
                         String new_path = (VERSION >= 11 && is_image.equals("1") ? "images" : "files") + DS + new_paths[mode] + DS;
                         String new_filename = attachesName(id, Integer.toString(i + 1), date, ext);
-                        boolean exist = false;
-                        for (int j = 0; j < attachDir.size(); j++) {
-                            String filename = ((String) attachDir.get(j)) + parts[0] + ext;
-                            // TODO: String filename = path + parts[0] + ext;
-                            if (copyFile(filename, new_path + new_filename)) {
-                                exist = true;
-                                if (VERSION > 3) { // 1.2 beta и новее
-                                    InsertQuery query_add = new InsertQuery(PREF + tables[mode]);
-                                    query_add.addItem("entity_id", id);
-                                    query_add.addItem("user_id", author_id);
-                                    query_add.addItem("attach_number", i + 1);
-                                    query_add.addItem("filename", new_filename);
-                                    query_add.addItem("size", new File(new_path + new_filename).length());
-                                    query_add.addItem("date", parseDate(date));
-                                    query_add.addItem("is_image", is_image);
-                                    sqlData.add(query_add);
-                                } else { // Старше 1.2 beta
-                                    float size = (float) new File(new_path + new_filename).length() / 1024;
-                                    output += String.format("<br />Вложение %d: <a href=\"%s\">%s (%.3f Кбайт)</a>", i + 1,
-                                            SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"),
-                                            parts[0] + ext, size);
-                                }
-                                int pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                    String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                    site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                    if (uLinks.containsKey(site)) {
-                                        uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                    }
-                                }
-                                if (is_image.equals("1")) {
-                                    new_filename = attachesName("s" + id, Integer.toString(i + 1), date, ".jpg");
-                                    filename = ((String) attachDir.get(j)) + "s" + parts[0] + ".jpg";
-                                    // TODO: filename = path + "s" + parts[0] + ".jpg";
-                                    if (!copyFile(filename, new_path + new_filename)) {
-                                        println("WARNING: File \"s" + parts[0] + ".jpg\" not found.");
-                                    } else {
-                                        pos = filename.lastIndexOf(DS + paths[mode] + DS);
-                                        if (pos >= 0 && SITE_NAME_OLD != null && SITE_NAME_NEW != null && uLinks != null) {
-                                            String site = "http://" + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                            if (uLinks.containsKey(site)) {
-                                                uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                            }
-                                            site = "http://www." + SITE_NAME_OLD.toLowerCase() + filename.substring(pos).replace(DS, "/");
-                                            if (uLinks.containsKey(site)) {
-                                                uLinks.put(site, SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
+                        String filename = path + parts[0] + ext;
+                        if (filename.startsWith(DUMP) && (copyFile(filename, new_path + new_filename)
+                                || (USE_WEB_ATTACHES && (loadFile(getOldLinks(filename.substring(DUMP.length() - 1).replace(DS, "/")), new_path + new_filename) >= 0)))) {
+                            if (VERSION > 3) { // 1.2 beta и новее
+                                InsertQuery query_add = new InsertQuery(PREF + tables[mode]);
+                                query_add.addItem("entity_id", id);
+                                query_add.addItem("user_id", author_id);
+                                query_add.addItem("attach_number", i + 1);
+                                query_add.addItem("filename", new_filename);
+                                query_add.addItem("size", new File(new_path + new_filename).length());
+                                query_add.addItem("date", parseDate(date));
+                                query_add.addItem("is_image", is_image);
+                                sqlData.add(query_add);
+                            } else { // Старше 1.2 beta
+                                float size = (float) new File(new_path + new_filename).length() / 1024;
+                                output += String.format("<br />Вложение %d: <a href=\"%s\">%s (%.3f Кбайт)</a>", i + 1,
+                                        SITE_NAME_NEW.toLowerCase() + "/sys/" + (new_path + new_filename).replace(DS, "/"),
+                                        parts[0] + ext, size);
                             }
-                        }
-                        if (!exist) {
-                            println("WARNING: Attachment \"" + parts[0] + ext + "\" not found.");
+                            updateLink(filename.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
+                            if (is_image.equals("1")) {
+                                filename = path + "s" + parts[0] + ".jpg";
+                                updateLink(filename.substring(DUMP.length()), (VERSION >= 10 ? "/data/" : "/sys/") + (new_path + new_filename).replace(DS, "/"));
+                            }
+                        } else {
+                            println("WARNING: Attachment \"" + parts[0] + ext + "\" [" + modules[mode] + " ID=\"" + uRecord[0] + "\"] not found.");
                         }
                     }
                 }
@@ -1653,10 +1890,8 @@ public class Converter {
         String[] moduleName = {null, "news", "news", "stat", "foto", "loads", null, null};
         String[] tableName = {null, "news_comments", "news_comments", "stat_comments", null, "loads_comments", null, null};
         String[] columnName = {null, "new_id", "new_id", "entity_id", null, "entity_id", null, null};
-        int moduleID = 0;
-        try {
-            moduleID = Integer.parseInt(uRecord[1]);
-        } catch (Exception e) {
+        int moduleID = parseInt(uRecord[1], 0);
+        if (moduleID == 0) {
             return false;
         }
         if (VERSION < 6 && (moduleID >= tableName.length || tableName[moduleID] == null)) {
@@ -1665,10 +1900,8 @@ public class Converter {
         if (VERSION >= 6 && (moduleID >= moduleName.length || moduleName[moduleID] == null)) {
             return false;
         }
-        int entity_id = 0;
-        try {
-            entity_id = Integer.parseInt(uRecord[2]);
-        } catch (Exception e) {
+        int entity_id = parseInt(uRecord[2], 0);
+        if (entity_id == 0) {
             return false;
         }
         if (moduleID == 2) {
@@ -1720,18 +1953,18 @@ public class Converter {
         String last_visit = "";
         String locked = "0";
         String activation = uRecord[23].equals("0") ? "" : uRecord[23];
-        try {
-            String[] str = (String[])uUsersMeta.get(uRecord[0]);
-            if (str != null) {
-                posts = str[9];
-                status = ((Integer.parseInt(str[2]) <= 4) ? str[2] : "1");
-                last_visit = str[18];
-                locked = ((Integer.parseInt(str[2]) == 255) ? "1" : str[3]);
-            } else {
-                posts = "0";
-                status = "1";
+        String[] str = uUsersMeta.get(uRecord[0]);
+        if (str != null) {
+            posts = str[9];
+            status = ((NO_GROUPS || parseInt(str[2], 1) <= 4) ? str[2] : "1");
+            if (!status.equalsIgnoreCase(str[2])) {
+                println("WARNING: Group for user \"" + uRecord[0] + "\" changed from \"" + str[2] + "\" to \"" + status + "\".");
             }
-        } catch (Exception e) {
+            last_visit = str[18];
+            locked = ((Integer.parseInt(str[2]) == 255) ? "1" : str[3]);
+        } else {
+            posts = "0";
+            status = "1";
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1799,26 +2032,14 @@ public class Converter {
         if (!uRecord[3].isEmpty() && !uRecord[3].equals("0")) {
             File file = null;
             BufferedImage imag = null;
-            if (SITE_NAME_OLD != null) {
-                String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-                String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-                if (uRecord[3].toLowerCase().startsWith(site_0)
-                        || uRecord[3].toLowerCase().startsWith(site_1)) {
-                    String path = null;
-                    if (uRecord[3].toLowerCase().startsWith(site_0)) {
-                        path = uRecord[3].substring(site_0.length() + 1);
-                    } else if (uRecord[3].toLowerCase().startsWith(site_1)) {
-                        path = uRecord[3].substring(site_1.length() + 1);
-                    }
-                    if (path != null) {
-                        path = path.replace("/", DS);
-                        file = new File(DUMP + path);
-                    }
-                }
+            String path = trimUrl(uRecord[3]);
+            if (path != null) {
+                path = path.replace("/", DS);
+                file = new File(DUMP + path);
             } else {
-                String[] path = uRecord[3].split("/");
-                if (path.length > 1) {
-                    file = new File(AVATAR_TABLES + path[path.length - 2] + DS + path[path.length - 1]);
+                String[] paths = uRecord[3].split("/");
+                if (paths.length > 1) {
+                    file = new File(AVATAR_TABLES + paths[paths.length - 2] + DS + paths[paths.length - 1]);
                 }
             }
             try {
@@ -1836,15 +2057,13 @@ public class Converter {
                         imag = image2;
                     }
                     File new_file = new File("avatars" + DS + uUsers.get(uRecord[0]) + ".jpg");
-                    if (uLinks != null && uLinks.containsKey(uRecord[3])) {
-                        uLinks.put(uRecord[3], SITE_NAME_NEW.toLowerCase() + (VERSION >= 10 ? "/data/" : "/sys/") + "avatars/" + uUsers.get(uRecord[0]) + ".jpg");
-                    }
+                    updateLink(uRecord[3], (VERSION >= 10 ? "/data/" : "/sys/") + "avatars/" + uUsers.get(uRecord[0]) + ".jpg");
                     ImageIO.write(imag, "JPEG", new_file);
                     if (file != null && file.exists()) {
                         new_file.setLastModified(file.lastModified());
                     }
                 } else {
-                    println("WARNING: File \"" + file.getName() + "\" not found. Avatar for user \"" + uRecord[0] + "\" not created.");
+                    println("WARNING: " + (file != null ? "File \"" + file.getName() + "\" not found. " : "") + "Avatar for user \"" + uRecord[0] + "\" not created.");
                 }
             } catch (Exception e) {
                 println("WARNING: Avatar for user \"" + uRecord[0] + "\" not created.");
@@ -1904,23 +2123,15 @@ public class Converter {
      */
     public void loadBackups(boolean parseAll, boolean[] parse) {
         uLinks = new TreeMap();
-        uLoadsCat = new ArrayList();
-        uForumCat = new ArrayList();
-        uForumPost = new ArrayList();
-        atmData = new ArrayList<ArrayList>();
+        // Загрузка файлов бекапа Ucoz
         for (int i = 0; i < uTables.length; i++) {
-            atmData.add(new ArrayList());
             if (log != null) {
                 log.setProgress(log.getProgress() + 1);
             }
-        }
-
-        for (int i = 0; i < uTables.length; i++) {
             if (!parseAll && !parse[i]) {
                 for (int j = 0; j < uTables[i].length; j++) {
                     uData[i][j] = null;
                 }
-                continue;
             } else {
                 for (int j = 0; j < uTables[i].length; j++) {
                     int id = 0;
@@ -1953,269 +2164,52 @@ public class Converter {
                             }
                             line_int = line_int.replace("\\|", "&#124;");
                             String[] uRecord = line_int.split("\\|");
-                            int new_id = -1;
-                            try {
-                                if (!uTables[i][j].equals("users")) {
-                                    new_id = Integer.parseInt(uRecord[0]);
-                                }
-                            } catch (Exception e) {
-                                new_id = -1;
-                            }
+                            int new_id = (!uTables[i][j].equals("users")) ? parseInt(uRecord[0], -1) : -1;
                             for (int k = 0; k < uRecord.length; k++) {
                                 if (uRecord[k].contains("&#124;")) {
                                     uRecord[k] = uRecord[k].replace("&#124;", "|");
                                 }
-                                if (SITE_NAME_OLD == null) {
-                                    continue;
-                                }
-                                int next = 0;
-
-                                while ((uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next) >= 0
-                                        || uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase()) >= 0)
-                                        && next >= 0 && next < uRecord[k].length()) {
-                                    int posH = uRecord[k].indexOf("http://" + SITE_NAME_OLD.toLowerCase(), next);
-                                    int posF = uRecord[k].indexOf("http://www." + SITE_NAME_OLD.toLowerCase(), next);
-                                    int start = 0;
-                                    if (posH < 0) {
-                                        if (posF < 0) {
-                                            break;
-                                        } else {
-                                            start = posF;
-                                        }
-                                    } else if (posF < 0) {
-                                        start = posH;
-                                    } else {
-                                        start = posH > posF ? posH : posF;
-                                    }
-                                    String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
-                                    int end = uRecord[k].length();
-                                    for (int l = 0; l < breaks.length; l++) {
-                                        int pos = uRecord[k].indexOf(breaks[l], start + 7 + SITE_NAME_OLD.length());
-                                        if (pos > 0 && pos < end) {
-                                            end = pos;
+                                // Инициализация массива ссылок
+                                if (SITE_NAME_OLD != null) {
+                                    int next = 0;
+                                    String[] keys = getOldSites();
+                                    boolean found = false;
+                                    int found_index = -1;
+                                    int start = uRecord[k].length();
+                                    for (int l = 0; l < keys.length; l++) {
+                                        int pos = uRecord[k].indexOf(keys[l], next);
+                                        if (pos >= 0 && pos < start) {
+                                            found = true;
+                                            found_index = l;
+                                            start = pos;
                                         }
                                     }
-                                    String key = uRecord[k].substring(start, end);
-                                    if (key != null && uLinks != null && !uLinks.containsKey(key)) {
-                                        String value = null;
-                                        String[] record = null;
-                                        if (key.contains("?")) {
-                                            record = key.substring(0, key.indexOf("?")).split("/");
-                                        } else {
-                                            record = key.split("/");
-                                        }
-                                        if (record.length > 3) {
-                                            String url_id = (record.length > 4) ? record[record.length - 1] : null;
-                                            /*
-                                            String url_id = null;
-                                            if (record.length == 5) {
-                                                url_id = record[4];
-                                            } else if (record.length == 6) {
-                                                url_id = record[5];
+                                    while (found && next >= 0 && next < uRecord[k].length()) {
+                                        String[] breaks = {" ", "\"", "'", "<", ":", ",", "(", ")", "[", "]", ";"};
+                                        int end = uRecord[k].length();
+                                        for (String pos_break : breaks) {
+                                            int pos = uRecord[k].indexOf(pos_break, start + keys[found_index].length());
+                                            if (pos > 0 && pos < end) {
+                                                end = pos;
                                             }
-                                             */
-                                            if (record[3].equals("forum")) {
-                                                if (url_id != null) {
-                                                    String[] index = url_id.split("-");
-                                                    if (index.length > 0 && index[0].equals("0")) {
-                                                        if (index.length >= 4) {
-                                                            if (index[3].equals("34")) {
-                                                                // Ленточный форум
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/last_posts/";
-                                                                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                                    value += "&page=" + index[2];
-                                                                }
-                                                            } else if (index[3].equals("35")) {
-                                                                // Пользователи форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/users/index/";
-                                                            } else if (index[3].equals("36")) {
-                                                                // Правила форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                            } else if (index[3].equals("37")) {
-                                                                // RSS для форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                            } else if (index[3].equals("6")) {
-                                                                // Поиск для форума
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                            } else if (index[3].equals("3") && index.length >= 5 && !index[4].isEmpty()) {
-                                                                // Сообщения пользователя
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/user_posts/" + index[4];
-                                                                if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                                    value += "&page=" + index[2];
-                                                                }
-                                                            } else {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                            }
-                                                        } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                        }
-                                                    } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) {
-                                                        uForumCat.add(index[0]);
-                                                    } else if (index.length == 2 || (index.length > 2 && index[2].isEmpty())) {
-                                                        if (index[1].equals("0")) {
-                                                            // На разделы форума нет расширеных ссылок (предположение)
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
-                                                        } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
-                                                        }
-                                                    } else if (index.length == 3 || (index.length > 3 && index[3].isEmpty())) {
-                                                        if (index[1].equals("0")) {
-                                                            // На разделы форума нет расширеных ссылок (предположение)
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
-                                                        } else {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
-                                                        }
-                                                        if (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1")) {
-                                                            value += "&page=" + index[2];
-                                                        }
-                                                    } else if (index.length >= 4) {
-                                                        if (index[2].isEmpty() || index[2].equals("0")) {
-                                                            if (!index[1].isEmpty() && index[1].equals("17")) {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1] + "&page=999";
-                                                            } else if (index[1].equals("0")) {
-                                                                // На разделы форума нет расширеных ссылок (предположение)
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_forum/" + index[0];
-                                                            } else {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/forum/view_theme/" + index[1];
-                                                            }
-                                                        } else if (index[3].equals("16")) {
-                                                            uForumPost.add(url_id);
-                                                        }
-                                                    } else {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                    }
-                                                } else {
-                                                    value = SITE_NAME_NEW.toLowerCase() + "/forum/";
-                                                }
-                                            } else if (record[3].equals("load")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/load/0-0-0-0-1 добавление материала
-                                                    http://site.ucoz.ru/load/0-0-0-1112-13 редактирование материала
-                                                    http://site.ucoz.ru/load/0-0-0-1112-20 ссылка для скачивания материала
-                                                    http://site.ucoz.ru/load/0-0-111-0-17 материалы пользователя
-
-                                                    http://site.ucoz.ru/load/0-1-0-0-16 Неактивные материалы
-                                                    http://site.ucoz.ru/load/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
-                                                    http://site.ucoz.ru/load/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
-                                                    http://site.ucoz.ru/load/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
-                                                    http://site.ucoz.ru/load/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
-                                                    http://site.ucoz.ru/load/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
-                                                     */
-                                                    String[] index = url_id.split("-");
-                                                    if (index.length > 0 && index.length < 4) {
-                                                        if (index[0].equals("0")) {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/loads/";
-                                                            if (index.length > 1) {
-                                                                value += "&page=" + index[1];
-                                                            }
-                                                        } else {
-                                                            uLoadsCat.add(url_id);
-                                                        }
-                                                    } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/loads/view/" + index[3];
-                                                    } else if (index.length == 5) {
-                                                        if (index[4] != null && !index[4].isEmpty()) {
-                                                            if (index[4].equals("1")) {
-                                                                // Добавление материала
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/add_form/";
-                                                            } else if (index[4].equals("16")) {
-                                                                // Неактивные материалы и ТОП-ы
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/";
-                                                            } else if (index[4].equals("17")) {
-                                                                // Материалы пользователя
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/loads/";
-                                                            }
-                                                        }
-                                                    } else {
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/loads/";
-                                                    }
-                                                } else {
-                                                    value = SITE_NAME_NEW.toLowerCase() + "/loads/";
-                                                }
-                                            } else if (record[3].equals("publ")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/publ/    каталог статей
-                                                    http://site.ucoz.ru/publ/0-2 2-я страница каталога статей
-                                                    http://site.ucoz.ru/publ/1     раздел/категория с ID=1
-                                                    http://site.ucoz.ru/publ/1-2-2 2-я страница раздела/категории с ID=1
-                                                    http://site.ucoz.ru/publ/4-1-0-5 материал c ID=5 из раздела/категории с ID=4
-                                                     */
-                                                }
-                                            } else if (record[3].equals("news")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/news/  архив новостей
-                                                    http://site.ucoz.ru/news/2 2-я страница архива
-                                                    http://site.ucoz.ru/news/1-0-2 категория с ID=2
-                                                    http://site.ucoz.ru/news/2-0-2 2-я страница категории с ID=2
-                                                    http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-                                                    http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-                                                    http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-                                                    http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-                                                     */
-                                                }
-                                            } else if (record[3].equals("blog")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/blog/  блог
-                                                    http://site.ucoz.ru/blog/2 2-я страница блога
-                                                    http://site.ucoz.ru/blog/1-0-2 категория с ID=2
-                                                    http://site.ucoz.ru/blog/2-0-2 2-я страница категории с ID=2
-                                                    http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-                                                    http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-                                                    http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-                                                    http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-                                                     */
-                                                }
-                                            } else if (record[3].equals("faq")) {
-                                                if (url_id != null) {
-                                                    /*
-                                                    http://site.ucoz.ru/faq/    FAQ
-                                                    http://site.ucoz.ru/faq/0-2 2-я страница FAQ
-                                                    http://site.ucoz.ru/faq/1     категория с ID=1
-                                                    http://site.ucoz.ru/faq/1-2 2-я страница категории с ID=1
-                                                    http://site.ucoz.ru/faq/0-0-3 материал c ID=3 без категории
-                                                    http://site.ucoz.ru/faq/2-0-9 материал c ID=9 из категории с ID=2
-                                                     */
-                                                }
-                                            } else if (record[3].equals("index")) {
-                                                if (url_id != null) {
-                                                    String[] index = url_id.split("-");
-                                                    if (index[0].equals("15")) {
-                                                        // Пользователи сайта
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/index/";
-                                                    } else if (index[0].equals("1")) {
-                                                        // Страница входа
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/login_form/";
-                                                    } else if (index[0].equals("3")) {
-                                                        // Страница регистрации
-                                                        value = SITE_NAME_NEW.toLowerCase() + "/users/add_form/";
-                                                    } else if (index[0].equals("34")) {
-                                                        // Комментарии пользователя index[1]
-                                                    } else if (index[0].equals("8")) {
-                                                        index = url_id.split("-", 3);
-                                                        // Профиль пользователя с номером index[1] или именем index[2]
-                                                        if (index.length == 2) {
-                                                            value = SITE_NAME_NEW.toLowerCase() + "/users/info/" + index[1];
-                                                        } else if (index.length == 3 && index[1].equals("0")) {
-                                                            String user_id = (String) uUsers.get(index[2]);
-                                                            if (user_id != null) {
-                                                                value = SITE_NAME_NEW.toLowerCase() + "/users/info/" + user_id;
-                                                            }
-                                                        }
-                                                    }
-                                                } else {
-                                                    value = SITE_NAME_NEW.toLowerCase();
-                                                }
-                                            }
-                                        } else if (record.length == 3) {
-                                            value = SITE_NAME_NEW.toLowerCase();
                                         }
-                                        uLinks.put(key, value);
+                                        String key = uRecord[k].substring(start, end);
+                                        if (key != null) {
+                                            updateLink(key, null);
+                                        }
+                                        next = end + 1;
+                                        found = false;
+                                        found_index = -1;
+                                        start = uRecord[k].length();
+                                        for (int l = 0; l < keys.length; l++) {
+                                            int pos = uRecord[k].indexOf(keys[l], next);
+                                            if (pos >= 0 && pos < start) {
+                                                found = true;
+                                                found_index = l;
+                                                start = pos;
+                                            }
+                                        }
                                     }
-                                    next = end + 1;
                                 }
                             }
                             line_int = "";
@@ -2223,12 +2217,8 @@ public class Converter {
                             if (new_id >= 0 && new_id < id) {
                                 int ii = uData[i][j].size();
                                 while (ii > 0) {
-                                    int old_id = 0;
                                     String[] record = (String[]) uData[i][j].get(ii - 1);
-                                    try {
-                                        old_id = Integer.parseInt(record[0]);
-                                    } catch (Exception e) {
-                                    }
+                                    int old_id = parseInt(record[0], 0);
                                     if (old_id < new_id) {
                                         break;
                                     }
@@ -2248,6 +2238,83 @@ public class Converter {
                 }
             }
         }
+        // Инициализация данных для первоначального парсинга ссылок
+        TreeMap<String, Object[]> uPosts = null;
+        if (VERSION >= 10) { // AtomM 4 и новее
+            uThemesMeta = getMeta("forum");
+        }
+        if (VERSION < 6) { // Старше Fapos 2.1 RC7
+            uPosts = new TreeMap<String, Object[]>();
+            TreeMap<String, Integer> uThemes = new TreeMap<String, Integer>();
+            TreeMap<String, String[]> uPostsMeta = getMeta("forump");
+            int max_id = -1;
+            for (String id : uPostsMeta.keySet()) {
+                if (parseInt(id, -1) > max_id) {
+                    max_id = parseInt(id, -1);
+                }
+            }
+            for (int i = 0; i < max_id; i++) {
+                String id = Integer.toString(i);
+                if (uPostsMeta.containsKey(id)) {
+                    String[] uRecord = uPostsMeta.get(id);
+                    if (uRecord != null && uRecord.length > 1 && !uRecord[1].isEmpty()) {
+                        String theme_id = uRecord[1];
+                        int countPosts = 0;
+                        if (uThemes.containsKey(theme_id)) {
+                            countPosts = uThemes.get(theme_id);
+                        }
+                        countPosts++;
+                        uThemes.put(theme_id, countPosts);
+                        Object[] entry = {countPosts, theme_id};
+                        uPosts.put(id, entry);
+                    }
+                }
+            }
+        }
+        
+        // Первоначальный парсинг ссылок
+        if (uLinks != null) {
+            for (String key : uLinks.keySet()) {
+                if (uLinks.get(key) == null) {
+                    String value = null;
+                    String[] record = null;
+                    if (key.contains("?")) {
+                        record = key.substring(0, key.indexOf("?")).split("/");
+                    } else {
+                        record = key.split("/");
+                    }
+                    if (record.length > 3) {
+                        String url_id = (record.length > 4) ? record[record.length - 1] : null;
+                        /*
+                        String url_id = null;
+                        if (record.length == 5) {
+                            url_id = record[4];
+                        } else if (record.length == 6) {
+                            url_id = record[5];
+                        }
+                         */
+                        if (record[3].equals("forum")) {
+                            value = parse_forum_stage1(url_id, getMeta("fr_fr"), uPosts);
+                        } else if (record[3].equals("load")) {
+                            value = parse_load_stage1(url_id, getMeta("ld_ld"));
+                        } else if (record[3].equals("publ")) {
+                            value = parse_publ_stage1(url_id, getMeta("pu_pu"));
+                        } else if (record[3].equals("news")) {
+                            value = parse_news_stage1(url_id, getMeta("nw_nw"), 1);
+                        } else if (record[3].equals("blog")) {
+                            value = parse_news_stage1(url_id, getMeta("bl_bl"), 2);
+                        } else if (record[3].equals("faq")) {
+                            value = parse_faq_stage1(url_id, getMeta("fq_fq"));
+                        } else if (record[3].equals("index")) {
+                            value = parse_index_stage1(url_id);
+                        }
+                    } else if (record.length == 3) {
+                        value = "";
+                    }
+                    updateLink(key, value);
+                }
+            }
+        }
     }
 
     /**
@@ -2255,225 +2322,86 @@ public class Converter {
      * и т.п.).
      */
     public void linksUpdate() {
-        uForumThread = new TreeMap();
+        atmData = new ArrayList<ArrayList>();
         for (int i = 0; i < uTables.length; i++) {
-            log.setProgress(log.getProgress() + 1);
+            atmData.add(new ArrayList());
+            if (log != null) {
+                log.setProgress(log.getProgress() + 1);
+            }
+            if (uTables[i].length > 0) {
+                if (uTables[i][0].equals("users")) {
+                    // Инициализация папки для работы с аватарами
+                    createDir("avatars", "Avatars not supported.", true);
+                } else if (uTables[i][0].equals("fr_fr") || uTables[i][0].equals("forum") || uTables[i][0].equals("forump")) {
+                    // Инициализация папок для работы с вложениями
+                    File attachDir = new File(FORUM_ATTACH_TABLES);
+                    if (attachDir.exists()) {
+                        createDir("files" + DS + "forum", "Attachments for forum not supported.", true);
+                        if (VERSION >= 11) {
+                            createDir("images" + DS + "forum", "Attachments for forum not supported.", true);
+                        }
+                    } else {
+                        println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments for forum not supported.");
+                    }
+                } else if (uTables[i][0].equals("ld_ld") || uTables[i][0].equals("loads")) {
+                    // Инициализация папки для работы с файлами
+                    File attachDir = new File(LOADS_TABLES);
+                    if (attachDir.exists()) {
+                        createDir("files" + DS + "loads", "Loads not supported.", false);
+                    } else {
+                        println("WARNING: Path \"" + LOADS_TABLES + "\" not found. Loads not supported.");
+                    }
+                } else if (uTables[i][0].equals("pu_pu") || uTables[i][0].equals("publ")) {
+                    if (VERSION > 2) { // 1.1.9 и новее
+                        // Инициализация папок для работы с вложениями
+                        File attachDir = new File(PUBL_ATTACH_TABLES);
+                        if (attachDir.exists()) {
+                            createDir("files" + DS + "stat", "Attachments for publications not supported.", true);
+                            if (VERSION >= 11) {
+                                createDir("images" + DS + "stat", "Attachments for publications not supported.", true);
+                            }
+                        } else {
+                            println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments for publications not supported.");
+                        }
+                    }
+                } else if (uTables[i][0].equals("nw_nw") || uTables[i][0].equals("bl_bl") || uTables[i][0].equals("fq_fq")
+                        || uTables[i][0].equals("news") || uTables[i][0].equals("blog") || uTables[i][0].equals("faq")) {
+                    if (VERSION > 2) { // 1.1.9 и новее
+                        // Инициализация папок для работы с вложениями
+                        File newsAttachDir = new File(NEWS_ATTACH_TABLES);
+                        if (!newsAttachDir.exists()) {
+                            println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments for news not supported.");
+                        }
+                        File blogAttachDir = new File(BLOG_ATTACH_TABLES);
+                        if (!blogAttachDir.exists()) {
+                            println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments for blogs not supported.");
+                        }
+                        File faqAttachDir = new File(FAQ_ATTACH_TABLES);
+                        if (!faqAttachDir.exists()) {
+                            println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments for FAQs not supported.");
+                        }
+                        // Результирующая папка
+                        createDir("files" + DS + "news", "Attachments for news not supported.", true);
+                        if (VERSION >= 11) {
+                            createDir("images" + DS + "news", "Attachments for news not supported.", true);
+                        }
+                    }
+                }
+            }
             for (int j = 0; j < uTables[i].length; j++) {
                 if (uData[i][j] == null) {
                     continue;
-                }
-                if (uTables[i][j].equals("users")) {
-                    // Инициализация папки для работы с аватарами
-                    try {
-                        File outputAvatarsDir = new File("avatars");
-                        if (outputAvatarsDir.exists()) {
-                            if (!outputAvatarsDir.isDirectory()) {
-                                println("WARNING: Path \"avatars\" is not directory. Avatars not supported.");
-                            }
-                        } else {
-                            try {
-                                outputAvatarsDir.mkdirs();
-                            } catch (Exception e) {
-                                println("WARNING: Path \"avatars\" can't created. Avatars not supported.");
-                            }
-                        }
-                    } catch (Exception e) {
-                        println("WARNING: Path \"avatars\" can't created. Avatars not supported.");
-                    }
-                } else if (uTables[i][j].equals("fr_fr") || uTables[i][j].equals("forum") || uTables[i][j].equals("forump")) {
-                    // Инициализация папок для работы с вложениями
-                    uForumAttachDir = new ArrayList();
-                    try {
-                        File attachDir = new File(FORUM_ATTACH_TABLES);
-                        if (attachDir.exists()) {
-                            String[] attach_cats = attachDir.list();
-                            for (int k = 0; k < attach_cats.length; k++) {
-                                uForumAttachDir.add(FORUM_ATTACH_TABLES + attach_cats[k] + DS);
-                            }
-                            File outputForumDir = new File("files" + DS + "forum");
-                            if (outputForumDir.exists()) {
-                                if (!outputForumDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "forum\" is not directory. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputForumDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "forum\" can't created. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            }
-                            outputForumDir = new File("images" + DS + "forum");
-                            if (outputForumDir.exists()) {
-                                if (!outputForumDir.isDirectory()) {
-                                    println("WARNING: Path \"images" + DS + "forum\" is not directory. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputForumDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"images" + DS + "forum\" can't created. Attachments not supported.");
-                                    uForumAttachDir.clear();
-                                }
-                            }
-                        } else {
-                            println("WARNING: Path \"" + FORUM_ATTACH_TABLES + "\" not found. Attachments not supported.");
-                        }
-                    } catch (Exception e) {
-                    }
-                } else if (uTables[i][j].equals("ld_ld") || uTables[i][j].equals("loads")) {
-                    // Инициализация папки для работы с файлами
-                    try {
-                        File outputLoadsDir = new File("files" + DS + "loads");
-                        if (outputLoadsDir.exists()) {
-                            if (!outputLoadsDir.isDirectory()) {
-                                println("WARNING: Path \"files" + DS + "loads\" is not directory. Loads not supported.");
-                            }
-                        } else {
-                            try {
-                                outputLoadsDir.mkdirs();
-                            } catch (Exception e) {
-                                println("WARNING: Path \"files" + DS + "loads\" can't created. Loads not supported.");
-                            }
-                        }
-                    } catch (Exception e) {
-                        println("WARNING: Path \"files" + DS + "loads\" is not directory. Loads not supported.");
-                    }
-                } else if (uTables[i][j].equals("pu_pu") || uTables[i][j].equals("publ")) {
-                    if (VERSION > 2) { // 1.1.9 и новее
-                        // Инициализация папок для работы с вложениями
-                        uStatAttachDir = new ArrayList();
-                        try {
-                            File attachDir = new File(PUBL_ATTACH_TABLES);
-                            if (attachDir.exists()) {
-                                String[] attach_cats = attachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uStatAttachDir.add(PUBL_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                                File outputStatDir = new File("files" + DS + "stat");
-                                if (outputStatDir.exists()) {
-                                    if (!outputStatDir.isDirectory()) {
-                                        println("WARNING: Path \"files" + DS + "stat\" is not directory. Attachments for publication not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                } else {
-                                    try {
-                                        outputStatDir.mkdirs();
-                                    } catch (Exception e) {
-                                        println("WARNING: Path \"files" + DS + "stat\" can't created. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                }
-                                outputStatDir = new File("images" + DS + "stat");
-                                if (outputStatDir.exists()) {
-                                    if (!outputStatDir.isDirectory()) {
-                                        println("WARNING: Path \"images" + DS + "stat\" is not directory. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                } else {
-                                    try {
-                                        outputStatDir.mkdirs();
-                                    } catch (Exception e) {
-                                        println("WARNING: Path \"images" + DS + "stat\" can't created. Attachments not supported.");
-                                        uStatAttachDir.clear();
-                                    }
-                                }
-                            } else {
-                                println("WARNING: Path \"" + PUBL_ATTACH_TABLES + "\" not found. Attachments not supported.");
-                            }
-                        } catch (Exception e) {
-                            println("WARNING: Path \"files" + DS + "stat\" can't created. Attachments for publication not supported.");
-                        }
-                    }
-                } else if (uTables[i][j].equals("nw_nw") || uTables[i][j].equals("bl_bl") || uTables[i][j].equals("fq_fq")
-                        || uTables[i][j].equals("news") || uTables[i][j].equals("blog") || uTables[i][j].equals("faq")) {
-                    if (VERSION > 2) { // 1.1.9 и новее
-                        // Инициализация папок для работы с вложениями
-                        uNewsAttachDir = new ArrayList();
-                        uBlogAttachDir = new ArrayList();
-                        uFaqAttachDir = new ArrayList();
-                        try {
-                            File newsAttachDir = new File(NEWS_ATTACH_TABLES);
-                            if (newsAttachDir.exists()) {
-                                String[] attach_cats = newsAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uNewsAttachDir.add(NEWS_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + NEWS_ATTACH_TABLES + "\" not found. Attachments not supported.");
-                            }
-                            File blogAttachDir = new File(BLOG_ATTACH_TABLES);
-                            if (blogAttachDir.exists()) {
-                                String[] attach_cats = blogAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uBlogAttachDir.add(BLOG_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + BLOG_ATTACH_TABLES + "\" not found. Attachments not supported.");
-                            }
-                            File faqAttachDir = new File(FAQ_ATTACH_TABLES);
-                            if (faqAttachDir.exists()) {
-                                String[] attach_cats = faqAttachDir.list();
-                                for (int k = 0; k < attach_cats.length; k++) {
-                                    uFaqAttachDir.add(FAQ_ATTACH_TABLES + attach_cats[k] + DS);
-                                }
-                            } else {
-                                println("WARNING: Path \"" + FAQ_ATTACH_TABLES + "\" not found. Attachments not supported.");
-                            }
-                            // Результирующая папка
-                            File outputNewsDir = new File("files" + DS + "news");
-                            if (outputNewsDir.exists()) {
-                                if (!outputNewsDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputNewsDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            }
-                            outputNewsDir = new File("images" + DS + "news");
-                            if (outputNewsDir.exists()) {
-                                if (!outputNewsDir.isDirectory()) {
-                                    println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            } else {
-                                try {
-                                    outputNewsDir.mkdirs();
-                                } catch (Exception e) {
-                                    println("WARNING: Path \"files" + DS + "news\" can't created. Attachments not supported.");
-                                    uNewsAttachDir.clear();
-                                    uBlogAttachDir.clear();
-                                    uFaqAttachDir.clear();
-                                }
-                            }
-                        } catch (Exception e) {
-                            println("WARNING: Path \"files" + DS + "news\" is not directory. Attachments for news not supported.");
-                        }
-                    }
                 }
                 for (int k = 0; k < uData[i][j].size(); k++) {
                     String[] uRecord = (String[]) uData[i][j].get(k);
                     if (uTables[i][j].equals("users")) {
                         parse_users_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("fr_fr")) {
-                        parse_fr_fr_stage2(atmData.get(i), uRecord);
+                        // parse_fr_fr_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("forump")) {
                         parse_forump_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("ld_ld")) {
-                        parse_ld_ld_stage2(atmData.get(i), uRecord);
+                        // parse_ld_ld_stage2(atmData.get(i), uRecord);
                     } else if (uTables[i][j].equals("loads")) {
                         String str = parse_loads_stage2(atmData.get(i), uRecord);
                         if (str != null && !str.isEmpty()) {
@@ -2525,46 +2453,27 @@ public class Converter {
         }
         println("Check bad links...");
         if (uLinks != null) {
-            Iterator it = uLinks.keySet().iterator();
-            while (it.hasNext()) {
-                String key = (String) it.next();
-                if (uLinks.get(key) == null) {
+            for (String key : uLinks.keySet()) {
+                if (!key.endsWith("/") && uLinks.get(key) == null) {
                     boolean exist = false;
                     // Проверка существования файла и его копирование при наличии
-                    if (SITE_NAME_OLD != null) {
-                        String site_0 = "http://" + SITE_NAME_OLD.toLowerCase();
-                        String site_1 = "http://www." + SITE_NAME_OLD.toLowerCase();
-                        if (key.toLowerCase().startsWith(site_0)
-                                || key.toLowerCase().startsWith(site_1)) {
-                            String path = null;
-                            if (key.toLowerCase().startsWith(site_0)) {
-                                path = key.substring(site_0.length() + 1);
-                            } else if (key.toLowerCase().startsWith(site_1)) {
-                                path = key.substring(site_1.length() + 1);
-                            }
-                            if (path != null) {
-                                path = path.replace("/", DS);
-                                File file = new File(DUMP + path);
-                                if (file.exists() && file.isFile()) {
-                                    String filename = "www" + DS + path;
-                                    File dir = new File(filename.substring(0, filename.lastIndexOf(DS)));
-                                    if (!dir.exists()) {
-                                        try {
-                                            dir.mkdirs();
-                                        } catch (Exception e) {
-                                        }
-                                    }
-                                    if (dir.exists() && dir.isDirectory() && copyFile(DUMP + path, filename)) {
-                                        String value = SITE_NAME_NEW.toLowerCase() + "/" + path.replace(DS, "/");
-                                        uLinks.put(key, value);
-                                        exist = true;
-                                    }
+                    String path = trimUrl(key);
+                    if (path != null) {
+                        path = path.replace("/", DS);
+                        File file = new File(DUMP + path);
+                        if (file.exists() && file.isFile()) {
+                            String filename = path.substring(0, path.lastIndexOf(DS));
+                            if (createDir(filename, "", false)) {
+                                if (copyFile(DUMP + path, path)) {
+                                    String value = "/" + path.replace(DS, "/");
+                                    updateLink(key, value);
+                                    exist = true;
                                 }
                             }
                         }
                     }
                     if (!exist) {
-                        println(key);
+                        println("WARNING: URL \"" + key + "\" not modified.");
                     }
                 }
             }
@@ -2577,9 +2486,6 @@ public class Converter {
      * @return список, в котором лежат списки с SQL-запросами.
      */
     public ArrayList getSQL() {
-        if (VERSION >= 10) { // AtomM 4 и новее
-            uThemes = new TreeMap();
-        }
         boolean forumEmpty = false;
         boolean loadsEmpty = false;
         boolean publEmpty = false;
@@ -2589,7 +2495,9 @@ public class Converter {
         boolean addFAQ = false;
         for (int i = 0; i < uTables.length; i++) {
             ArrayList emptySql = new ArrayList();
-            log.setProgress(log.getProgress() + 1);
+            if (log != null) {
+                log.setProgress(log.getProgress() + 1);
+            }
             for (int j = 0; j < uTables[i].length; j++) {
                 if (uData[i][j] == null) {
                     continue;
