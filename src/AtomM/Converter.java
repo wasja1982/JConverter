@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Stack;
 import java.util.TreeMap;
 import org.xml.sax.InputSource;
@@ -1184,41 +1183,42 @@ public class Converter {
      *
      * @param url_id ссылка.
      */
-    private String parse_news_stage1(String url_id) {
+    private String parse_news_stage1(String url_id, TreeMap<String, String[]> uNewsMeta, int mode) {
         String value = null;
         if (url_id != null) {
-            /*
-            http://site.ucoz.ru/news/  архив новостей
-            http://site.ucoz.ru/news/2 2-я страница архива
-            http://site.ucoz.ru/news/1-0-2 категория с ID=2
-            http://site.ucoz.ru/news/2-0-2 2-я страница категории с ID=2
-            http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-            http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-            http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-            http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-             */
-        }
-        return value;
-    }
-    
-    /**
-     * Первоначальный парсинг ссылок (этап 1) - обработка ссылок блогов.
-     *
-     * @param url_id ссылка.
-     */
-    private String parse_blog_stage1(String url_id) {
-        String value = null;
-        if (url_id != null) {
-            /*
-            http://site.ucoz.ru/blog/  блог
-            http://site.ucoz.ru/blog/2 2-я страница блога
-            http://site.ucoz.ru/blog/1-0-2 категория с ID=2
-            http://site.ucoz.ru/blog/2-0-2 2-я страница категории с ID=2
-            http://site.ucoz.ru/blog/2011-02-06-7 материал c ID=7
-            http://site.ucoz.ru/blog/2011 календарь с сообщениями за 2011 год
-            http://site.ucoz.ru/blog/2011-2 календарь с сообщениями за февраль 2011 года
-            http://site.ucoz.ru/blog/2011-02-06 сообщения за 6 февраля 2011 года
-             */
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) {
+                value = "/news/";
+                if (index.length == 1) { // http://site.ucoz.ru/news/2 2-я страница архива новостей
+                    boolean page = !index[0].isEmpty() && !index[0].equals("0") && !index[0].equals("1");
+                    value = "/news/" + (page ? "?page=" + index[0] : "");
+                } else if (index.length == 2 && index[1] != null) {
+                    if (index[1].equals("00")) { // TODO: http://site.ucoz.ru/news/2011-00 Календарь с сообщениями за 2011 год
+                    } else { // TODO: http://site.ucoz.ru/news/2011-02 Календарь с сообщениями за февраль 2011 года
+                    }
+                } else if (index.length == 3 && index[1] != null && index[2] != null) {
+                    if (index[1].equals("0")) { // http://site.ucoz.ru/news/2-0-1 2-я страница категории
+                        boolean page = !index[0].isEmpty() && !index[0].equals("0") && !index[0].equals("1");
+                        int id = (parseInt(index[2], 1) - 1) * 3 + mode;
+                        if (uNewsMeta != null && uNewsMeta.containsKey(index[0])) {
+                            String[] uRecord = uNewsMeta.get(index[0]);
+                            if (uRecord.length >= 3) {
+                                String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                                value = "/news/" + class_sections + "/" + id + (page ? "?page=" + index[0] : "");
+                            } else {
+                                value = "/news/";
+                            }
+                        }
+                    } else { // TODO: http://site.ucoz.ru/news/2011-02-06 Сообщения за 6 февраля 2011 года
+                    }
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/news/2011-02-06-1 Материал
+                value = "/news/view/" + index[3];
+            } else {
+                value = "/news/";
+            }
+        } else {
+            value = "/news/";
         }
         return value;
     }
@@ -2269,9 +2269,9 @@ public class Converter {
                         } else if (record[3].equals("publ")) {
                             value = parse_publ_stage1(url_id, getMeta("pu_pu"));
                         } else if (record[3].equals("news")) {
-                            value = parse_news_stage1(url_id);
+                            value = parse_news_stage1(url_id, getMeta("nw_nw"), 1);
                         } else if (record[3].equals("blog")) {
-                            value = parse_blog_stage1(url_id);
+                            value = parse_news_stage1(url_id, getMeta("bl_bl"), 2);
                         } else if (record[3].equals("faq")) {
                             value = parse_faq_stage1(url_id);
                         } else if (record[3].equals("index")) {
