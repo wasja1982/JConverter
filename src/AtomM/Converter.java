@@ -952,6 +952,7 @@ public class Converter {
         if (url_id != null) {
             String[] index = url_id.split("-");
             if (index.length > 0 && index[0].equals("0")) {
+                value = "/forum/";
                 if (index.length >= 4) {
                     if (index[3].equals("34")) {// http://site.ucoz.ru/forum/0-0-1-34 Ленточный форум
                         boolean page = !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1");
@@ -986,6 +987,7 @@ public class Converter {
                     value = "/forum/";
                 }
             } else if (index.length == 1 || (index.length > 1 && index[1].isEmpty())) { // http://site.ucoz.ru/forum/1 Категория форума или форум
+                value = "/forum/";
                 if (uForumsMeta != null && uForumsMeta.containsKey(index[0])) {
                     String[] uRecord = uForumsMeta.get(index[0]);
                     if (uRecord.length >= 2 && (uRecord[1] == null || uRecord[1].isEmpty() || uRecord[1].equals("0"))) {
@@ -1002,6 +1004,7 @@ public class Converter {
                     value = "/forum/view_theme/" + index[1] + (index.length > 2 && !index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
                 }
             } else if (index.length >= 4) {
+                value = "/forum/";
                 if (index[2].isEmpty() || index[2].equals("0")) {
                     if (!index[3].isEmpty() && index[3].equals("17")) { // http://site.ucoz.ru/forum/1-1-0-17-1 Последнее сообщение темы
                         value = "/forum/view_theme/" + index[1];
@@ -1060,6 +1063,7 @@ public class Converter {
         if (url_id != null) {
             String[] index = url_id.split("-");
             if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/load/1-1 Категория
+                value = "/loads/";
                 if (index[0].equals("0")) {
                     value = "/loads/" + (index.length > 1 ? "?page=" + index[1] : "");
                 } else {
@@ -1076,6 +1080,7 @@ public class Converter {
             } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/load/1-1-0-1 Материал
                 value = "/loads/view/" + index[3];
             } else if (index.length == 5) {
+                value = "/loads/";
                 if (index[4] != null && !index[4].isEmpty()) {
                     if (index[4].equals("1")) { // http://site.ucoz.ru/load/0-0-0-0-1 Добавление материала
                         value = "/loads/add_form/";
@@ -1122,6 +1127,7 @@ public class Converter {
         if (url_id != null) {
             String[] index = url_id.split("-");
             if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/publ/1-1 Категория
+                value = "/stat/";
                 if (index[0].equals("0")) {
                     value = "/stat/" + (index.length > 1 ? "?page=" + index[1] : "");
                 } else {
@@ -1138,6 +1144,7 @@ public class Converter {
             } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/publ/1-1-0-1 Материал
                 value = "/stat/view/" + index[3];
             } else if (index.length == 5) {
+                value = "/stat/";
                 if (index[4] != null && !index[4].isEmpty()) {
                     if (index[4].equals("1")) { // http://site.ucoz.ru/publ/0-0-0-0-1 Добавление материала
                         value = "/stat/add_form/";
@@ -2201,9 +2208,6 @@ public class Converter {
             }
         }
         // Инициализация данных для первоначального парсинга ссылок
-        TreeMap<String, String[]> uForumsMeta = getMeta("fr_fr");
-        TreeMap<String, String[]> uLoadsMeta = getMeta("loads");
-        TreeMap<String, String[]> uStatsMeta = getMeta("publ");
         TreeMap<String, Object[]> uPosts = null;
         if (VERSION >= 10) { // AtomM 4 и новее
             uThemesMeta = getMeta("forum");
@@ -2259,11 +2263,11 @@ public class Converter {
                         }
                          */
                         if (record[3].equals("forum")) {
-                            value = parse_forum_stage1(url_id, uForumsMeta, uPosts);
+                            value = parse_forum_stage1(url_id, getMeta("fr_fr"), uPosts);
                         } else if (record[3].equals("load")) {
-                            value = parse_load_stage1(url_id, uLoadsMeta);
+                            value = parse_load_stage1(url_id, getMeta("ld_ld"));
                         } else if (record[3].equals("publ")) {
-                            value = parse_publ_stage1(url_id, uStatsMeta);
+                            value = parse_publ_stage1(url_id, getMeta("pu_pu"));
                         } else if (record[3].equals("news")) {
                             value = parse_news_stage1(url_id);
                         } else if (record[3].equals("blog")) {
