@@ -1117,19 +1117,60 @@ public class Converter {
      *
      * @param url_id ссылка.
      */
-    private String parse_publ_stage1(String url_id) {
+    private String parse_publ_stage1(String url_id, TreeMap<String, String[]> uStatsMeta) {
         String value = null;
         if (url_id != null) {
-            /*
-            http://site.ucoz.ru/publ/    каталог статей
-            http://site.ucoz.ru/publ/0-2 2-я страница каталога статей
-            http://site.ucoz.ru/publ/1     раздел/категория с ID=1
-            http://site.ucoz.ru/publ/1-2-2 2-я страница раздела/категории с ID=1
-            http://site.ucoz.ru/publ/4-1-0-5 материал c ID=5 из раздела/категории с ID=4
-             */
+            String[] index = url_id.split("-");
+            if (index.length > 0 && index.length < 4) { // http://site.ucoz.ru/publ/1-1 Категория
+                if (index[0].equals("0")) {
+                    value = "/stat/" + (index.length > 1 ? "?page=" + index[1] : "");
+                } else {
+                    if (uStatsMeta != null && uStatsMeta.containsKey(index[0])) {
+                        String[] uRecord = uStatsMeta.get(index[0]);
+                        if (uRecord.length >= 3) {
+                            String class_sections = (VERSION >= 3 || uRecord[2] == null || uRecord[2].isEmpty() || uRecord[2].equals("0")) ? "category" : "section";
+                            value = "/stat/" + class_sections + "/" + index[0] + (index.length > 1 ? "?page=" + index[1] : "");
+                        } else {
+                            value = "/stat/";
+                        }
+                    }
+                }
+            } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/publ/1-1-0-1 Материал
+                value = "/stat/view/" + index[3];
+            } else if (index.length == 5) {
+                if (index[4] != null && !index[4].isEmpty()) {
+                    if (index[4].equals("1")) { // http://site.ucoz.ru/publ/0-0-0-0-1 Добавление материала
+                        value = "/stat/add_form/";
+                    } else if (index[4].equals("16")) { // Неактивные материалы и ТОП-ы
+                        boolean page = !index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1");
+                        value = "/stat/" + (page ? "?page=" + index[1] : "");
+                        if (!index[2].isEmpty()) {
+                            value += (page ? "&" : "?") + "order=";
+                            if (index[2].equals("0")) value += "date"; // TODO: http://site.ucoz.ru/publ/0-1-0-0-16 Неактивные материалы
+                            else if (index[2].equals("1")) value += "date"; // http://site.ucoz.ru/publ/0-1-1-0-16 Последние поступления (ТОП материалов, отсортированных по дате добавления)
+                            else if (index[2].equals("2")) value += "date"; // TODO: http://site.ucoz.ru/publ/0-1-2-0-16 Лучшие материалы (ТОП материалов, отсортированных по рейтингу)
+                            else if (index[2].equals("3")) value += "downloads"; // http://site.ucoz.ru/publ/0-1-3-0-16 Самые скачиваемые материалы (ТОП материалов, отсортированных по загрузкам)
+                            else if (index[2].equals("4")) value += "views"; // http://site.ucoz.ru/publ/0-1-4-0-16 Самые читаемые материалы (ТОП материалов, отсортированных по просмотрам)
+                            else if (index[2].equals("5")) value += "comments"; // http://site.ucoz.ru/publ/0-1-5-0-16 Самые комментируемые материалы (ТОП материалов, отсортированных по комментариям)
+                        }
+                        
+                    } else if (index[4].equals("17")) { // http://site.ucoz.ru/publ/0-0-1-0-17 Материалы пользователя
+                        value = "/stat/" + (!index[2].isEmpty() && !index[2].equals("0") ? "user/" + index[2] : "")
+                                + (!index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1") ? "?page=" + index[1] : "");
+                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/publ/0-0-0-1-13 Редактирование материала
+                        value = "/stat/" + (!index[3].isEmpty() && !index[3].equals("0") ? "edit_form/" + index[3] : "");
+                    } else {
+                        value = "/stat/";
+                    }
+                }
+            } else {
+                value = "/stat/";
+            }
+        } else {
+            value = "/stat/";
         }
         return value;
-    }
+     }
     
     /**
      * Первоначальный парсинг ссылок (этап 1) - обработка ссылок новостей.
@@ -2162,6 +2203,7 @@ public class Converter {
         // Инициализация данных для первоначального парсинга ссылок
         TreeMap<String, String[]> uForumsMeta = getMeta("fr_fr");
         TreeMap<String, String[]> uLoadsMeta = getMeta("loads");
+        TreeMap<String, String[]> uStatsMeta = getMeta("publ");
         TreeMap<String, Object[]> uPosts = null;
         if (VERSION >= 10) { // AtomM 4 и новее
             uThemesMeta = getMeta("forum");
@@ -2221,7 +2263,7 @@ public class Converter {
                         } else if (record[3].equals("load")) {
                             value = parse_load_stage1(url_id, uLoadsMeta);
                         } else if (record[3].equals("publ")) {
-                            value = parse_publ_stage1(url_id);
+                            value = parse_publ_stage1(url_id, uStatsMeta);
                         } else if (record[3].equals("news")) {
                             value = parse_news_stage1(url_id);
                         } else if (record[3].equals("blog")) {
