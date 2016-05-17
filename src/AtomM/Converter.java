@@ -1023,7 +1023,7 @@ public class Converter {
                     } else if (index[1].equals("0")) {
                         value = "/forum/view_forum/" + index[0];
                     } else {
-                        value = "/forum/view_theme/" + index[1] + (!index[2].isEmpty() && !index[2].equals("0") && !index[2].equals("1") ? "?page=" + index[2] : "");;
+                        value = "/forum/view_theme/" + index[1];
                     }
                 } else if (index[3].equals("16")) { // http://site.ucoz.ru/forum/1-1-1-16-1350000000 Обработка ссылок на посты форума
                     if (VERSION >= 6) {
@@ -1101,7 +1101,7 @@ public class Converter {
                                 + (!index[1].isEmpty() && !index[1].equals("0") && !index[1].equals("1") ? "?page=" + index[1] : "");
                     } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-13 Редактирование материала
                         value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "edit_form/" + index[3] : "");
-                    } else if (index[4].equals("13")) { // http://site.ucoz.ru/load/0-0-0-1-20 Ссылка для скачивания материала
+                    } else if (index[4].equals("20")) { // http://site.ucoz.ru/load/0-0-0-1-20 Ссылка для скачивания материала
                         value = "/loads/" + (!index[3].isEmpty() && !index[3].equals("0") ? "download_file/" + index[3] : "");
                     } else {
                         value = "/loads/";
@@ -1199,7 +1199,7 @@ public class Converter {
                 } else if (index.length == 3 && index[1] != null && index[2] != null) {
                     if (index[1].equals("0")) { // http://site.ucoz.ru/news/2-0-1 2-я страница категории
                         boolean page = !index[0].isEmpty() && !index[0].equals("0") && !index[0].equals("1");
-                        int id = (parseInt(index[2], 1) - 1) * 3 + mode;
+                        int id = (parseInt(index[2], 1) + 1) * 3 + mode;
                         if (uNewsMeta != null && uNewsMeta.containsKey(index[0])) {
                             String[] uRecord = uNewsMeta.get(index[0]);
                             if (uRecord.length >= 3) {
@@ -1213,7 +1213,8 @@ public class Converter {
                     }
                 }
             } else if (index.length >= 4 && index[3] != null && !index[3].isEmpty() && !index[3].equals("0")) { // http://site.ucoz.ru/news/2011-02-06-1 Материал
-                value = "/news/view/" + index[3];
+                int id = (parseInt(index[3], 1) - 1) * 3 + mode;
+                value = "/news/view/" + id;
             } else {
                 value = "/news/";
             }
@@ -1238,7 +1239,7 @@ public class Converter {
                 if (index[0] == null || index[0].equals("0")) { // http://site.ucoz.ru/faq/0-2 2-я страница FAQ
                     value = "/news/" + (page ? "?page=" + index[1] : "");
                 } else { // http://site.ucoz.ru/faq/1-2 2-я страница категории
-                    int id = (parseInt(index[0], 1) - 1) * 3 + mode;
+                    int id = (parseInt(index[0], 1) + 1) * 3 + mode;
                     if (uFaqMeta != null && uFaqMeta.containsKey(index[0])) {
                         String[] uRecord = uFaqMeta.get(index[0]);
                         if (uRecord.length >= 3) {
